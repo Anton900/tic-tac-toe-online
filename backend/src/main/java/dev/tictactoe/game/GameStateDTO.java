@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
-public class TicTacToeGameStateDTO
+public class GameStateDTO
 {
     private Mark[] board;
     private Mark currentTurn;

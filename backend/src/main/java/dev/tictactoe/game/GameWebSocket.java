@@ -34,7 +34,7 @@ public class GameWebSocket
         if (clientMessage.actionType == ActionType.MAKE_MOVE)
         {
             gameService.makeMove(gameId, clientMessage.position);
-            TicTacToeGameStateDTO gameState = gameService.getGameState(gameId);
+            GameStateDTO gameState = gameService.getGameState(gameId);
             Set<WebSocketConnection> connections = gameRegistry.getActiveConnections(gameId);
             for (WebSocketConnection conn : connections)
             {
