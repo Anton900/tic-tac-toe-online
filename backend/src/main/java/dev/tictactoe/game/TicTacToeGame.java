@@ -1,5 +1,7 @@
 package dev.tictactoe.game;
 
+import lombok.Getter;
+
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -8,7 +10,9 @@ public class TicTacToeGame
     private static final int BOARD_SIZE = 9;
 
     private final Mark[] board;
+    @Getter
     private Mark currentTurn;
+    @Getter
     private GameStatus status;
 
     public TicTacToeGame()
@@ -32,16 +36,6 @@ public class TicTacToeGame
     public Mark[] getBoard()
     {
         return board.clone();
-    }
-
-    public Mark getCurrentTurn()
-    {
-        return currentTurn;
-    }
-
-    public GameStatus getStatus()
-    {
-        return status;
     }
 
     private void validateMove(int position)

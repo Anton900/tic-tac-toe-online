@@ -1,21 +1,45 @@
 package dev.tictactoe.game;
 
-import io.quarkus.websockets.next.OnTextMessage;
-import io.quarkus.websockets.next.WebSocket;
-import io.quarkus.websockets.next.WebSocketConnection;
+import io.quarkus.websockets.next.*;
+import jakarta.inject.Inject;
+import java.util.Set;
 
-@WebSocket(path = "/game")
+@WebSocket(path = "/game/{gameId}")
 public class GameWebSocket
 {
-    private GameService gameService;
+    @Inject
+    GameService gameService;
+
+    @Inject
+    GameRegistry gameRegistry;
+
+    @OnOpen
+    void onOpen(WebSocketConnection connection)
+    {
+        String gameId = connection.pathParam("gameId");
+        gameRegistry.addGame(gameId, connection);
+    }
+
+    @OnClose
+    void onClose(WebSocketConnection connection)
+    {
+        gameRegistry.removeConnection(connection);
+    }
 
     @OnTextMessage
-    public void onMessage(String message, WebSocketConnection webSocketConnection )
+    public void onMessage(ClientMessage clientMessage, WebSocketConnection connection)
     {
-        // parse JSON
-        // call GameService
+        String gameId = connection.pathParam("gameId");
 
-
-        // broadcast state
+        if (clientMessage.actionType == ActionType.MAKE_MOVE)
+        {
+            gameService.makeMove(gameId, clientMessage.position);
+            TicTacToeGameStateDTO gameState = gameService.getGameState(gameId);
+            Set<WebSocketConnection> connections = gameRegistry.getActiveConnections(gameId);
+            for (WebSocketConnection conn : connections)
+            {
+                conn.sendText(gameState);
+            }
+        }
     }
 }

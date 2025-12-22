@@ -33,4 +33,14 @@ public class GameService
         }
         return game;
     }
+
+    public TicTacToeGameStateDTO getGameState(String gameId)
+    {
+        TicTacToeGame game = getGame(gameId);
+        return TicTacToeGameStateDTO.builder()
+                .board(game.getBoard().clone())
+                .status(game.getStatus())
+                .currentTurn(game.getCurrentTurn())
+                .build();
+    }
 }
