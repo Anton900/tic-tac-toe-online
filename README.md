@@ -2,7 +2,7 @@
 
 A real-time online Tic-Tac-Toe game built with WebSockets.
 
-## ✅ Implemented
+## Implemented
 
 - Real-time multiplayer gameplay
 - Multiple concurrent games (`gameId`)
@@ -13,12 +13,12 @@ A real-time online Tic-Tac-Toe game built with WebSockets.
 - Turn validation enforced on the server
 - Vue + Tailwind CSS frontend with live updates
 
-## 🛠 Tech Stack
+## Tech Stack
 
 **Backend:** Java, Quarkus, WebSockets  
 **Frontend:** Vue 3, Vite, Tailwind CSS
 
-## 🔜 Planned
+## Planned
 
 - In-game chat
 - Rematch support
