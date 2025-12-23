@@ -10,7 +10,7 @@ import java.util.Set;
 public class GameWebSocket
 {
     @Inject
-    GameService gameService;
+    GameLogicService gameLogicService;
 
     @Inject
     GameRegistry gameRegistry;
@@ -26,6 +26,18 @@ public class GameWebSocket
             return;
         }
         gameRegistry.addGame(gameId, connection);
+        TicTacToeGame game = gameLogicService.getGame(gameId);
+        if(game == null)
+        {
+            Log.info(("Creating new game for gameId=%s").formatted(gameId));
+            gameLogicService.createGame(gameId);
+            sendGameState(gameId);
+        }
+        else
+        {
+            Log.info(("Reusing existing game for gameId=%s").formatted(gameId));
+            sendGameState(gameId);
+        }
         Log.infof("Connection opened for gameId=%s", gameId);
     }
 
@@ -40,11 +52,13 @@ public class GameWebSocket
     @OnTextMessage
     public void onMessage(ClientMessage clientMessage, WebSocketConnection connection)
     {
+        Log.info("Received message from client in onMessage: " + clientMessage);
         if (clientMessage == null || clientMessage.actionType == null)
         {
             Log.warn("Received null or invalid client message");
             return;
         }
+        Log.info("Received message: " + clientMessage + "");
 
         String gameId = connection.pathParam("gameId");
 
@@ -56,19 +70,30 @@ public class GameWebSocket
 
         if (clientMessage.actionType == ActionType.MAKE_MOVE)
         {
-            gameService.makeMove(gameId, clientMessage.position);
-            GameStateDTO gameState = gameService.getGameState(gameId);
-            Set<WebSocketConnection> connections = gameRegistry.getActiveConnections(gameId);
-            for (WebSocketConnection conn : connections)
+            gameLogicService.makeMove(gameId, clientMessage.position);
+            sendGameState(gameId);
+        }
+    }
+
+    public void sendGameState(String gameId)
+    {
+        GameStateDTO gameState = gameLogicService.getGameState(gameId);
+        Set<WebSocketConnection> connections = gameRegistry.getActiveConnections(gameId);
+        for (WebSocketConnection conn : connections)
+        {
+            try
             {
-                try
-                {
-                    conn.sendText(gameState);
-                }
-                catch (Exception e)
-                {
-                    Log.error("Error sending game state to client", e);
-                }
+                Log.infof("Sending updated game state to client for gameId=%s", gameId);
+                conn.sendText(gameState)
+                        .subscribe()
+                        .with(
+                                ignored -> Log.infof("IGNORED: Game state sent successfully to client for gameId=%s", gameId),
+                                failure -> Log.errorf("FAILURE: Failed to send game state to client for gameId=%s: %s", gameId,
+                                        failure.getMessage())
+                        );
+            } catch (Exception e)
+            {
+                Log.error("Error sending game state to client", e);
             }
         }
     }

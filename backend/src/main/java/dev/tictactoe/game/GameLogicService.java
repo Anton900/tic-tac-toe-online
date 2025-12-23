@@ -3,17 +3,15 @@ package dev.tictactoe.game;
 import jakarta.enterprise.context.ApplicationScoped;
 
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 @ApplicationScoped
-public class GameService
+public class GameLogicService
 {
     private final Map<String, TicTacToeGame> gameList = new ConcurrentHashMap<>();
 
-    public String createGame()
+    public String createGame(String gameId)
     {
-        String gameId = UUID.randomUUID().toString();
         gameList.put(gameId, new TicTacToeGame());
         return gameId;
     }
@@ -27,11 +25,12 @@ public class GameService
     public TicTacToeGame getGame(String gameId)
     {
         TicTacToeGame game = gameList.get(gameId);
-        if (game == null)
-        {
-            throw new IllegalArgumentException("Game not found");
-        }
         return game;
+    }
+
+    public void removeGame(String gameId)
+    {
+        gameList.remove(gameId);
     }
 
     public GameStateDTO getGameState(String gameId)

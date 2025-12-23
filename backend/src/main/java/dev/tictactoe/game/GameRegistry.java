@@ -1,5 +1,6 @@
 package dev.tictactoe.game;
 
+import io.quarkus.logging.Log;
 import io.quarkus.websockets.next.WebSocketConnection;
 import jakarta.enterprise.context.ApplicationScoped;
 
@@ -14,8 +15,10 @@ public class GameRegistry
 
     public void removeConnection(WebSocketConnection connection)
     {
+        Log.info("gamesList before removal: " + gamesList + "");
         gamesList.values().forEach(connections -> connections.remove(connection));
         gamesList.values().removeIf(Set::isEmpty);
+        Log.info("gamesList after removal: " + gamesList + "");
     }
 
     public void addGame(String gameId, WebSocketConnection connection)
