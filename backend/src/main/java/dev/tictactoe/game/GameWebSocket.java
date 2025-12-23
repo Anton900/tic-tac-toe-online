@@ -10,7 +10,7 @@ import java.util.Set;
 public class GameWebSocket
 {
     @Inject
-    GameLogicService gameLogicService;
+    GameManagmentService gameManagmentService;
 
     @Inject
     GameRegistry gameRegistry;
@@ -26,11 +26,11 @@ public class GameWebSocket
             return;
         }
         gameRegistry.addGame(gameId, connection);
-        TicTacToeGame game = gameLogicService.getGame(gameId);
+        TicTacToeGame game = gameManagmentService.getGame(gameId);
         if(game == null)
         {
             Log.info(("Creating new game for gameId=%s").formatted(gameId));
-            gameLogicService.createGame(gameId);
+            gameManagmentService.createGame(gameId);
             sendGameState(gameId);
         }
         else
@@ -70,14 +70,14 @@ public class GameWebSocket
 
         if (clientMessage.actionType == ActionType.MAKE_MOVE)
         {
-            gameLogicService.makeMove(gameId, clientMessage.position);
+            gameManagmentService.makeMove(gameId, clientMessage.position);
             sendGameState(gameId);
         }
     }
 
     public void sendGameState(String gameId)
     {
-        GameStateDTO gameState = gameLogicService.getGameState(gameId);
+        GameStateDTO gameState = gameManagmentService.getGameState(gameId);
         Set<WebSocketConnection> connections = gameRegistry.getActiveConnections(gameId);
         for (WebSocketConnection conn : connections)
         {

@@ -6,7 +6,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @ApplicationScoped
-public class GameLogicService
+public class GameManagmentService
 {
     private final Map<String, TicTacToeGame> gameList = new ConcurrentHashMap<>();
 
