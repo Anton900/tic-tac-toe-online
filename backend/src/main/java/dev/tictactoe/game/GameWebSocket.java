@@ -10,7 +10,7 @@ import java.util.Set;
 public class GameWebSocket
 {
     @Inject
-    GameManagmentService gameManagmentService;
+    GameManagementService gameManagementService;
 
     @Inject
     GameRegistry gameRegistry;
@@ -18,6 +18,7 @@ public class GameWebSocket
     @OnOpen
     void onOpen(WebSocketConnection connection)
     {
+        Log.info("================================= ONOPEN ===========================================");
         String gameId = connection.pathParam("gameId");
         if (gameId == null || gameId.isBlank())
         {
@@ -25,25 +26,18 @@ public class GameWebSocket
             connection.close();
             return;
         }
-        gameRegistry.addGame(gameId, connection);
-        TicTacToeGame game = gameManagmentService.getGame(gameId);
-        if(game == null)
-        {
-            Log.info(("Creating new game for gameId=%s").formatted(gameId));
-            gameManagmentService.createGame(gameId);
-            sendGameState(gameId);
-        }
-        else
-        {
-            Log.info(("Reusing existing game for gameId=%s").formatted(gameId));
-            sendGameState(gameId);
-        }
+
+        gameManagementService.manageGameOnOpen(gameId, connection);
+        gameRegistry.addGameConnection(gameId, connection);
+        sendGameState(gameId);
         Log.infof("Connection opened for gameId=%s", gameId);
     }
 
     @OnClose
     void onClose(WebSocketConnection connection)
     {
+        Log.info("================================= ONCLOSE ===========================================");
+
         gameRegistry.removeConnection(connection);
         connection.close();
         Log.info("Connection closed and removed from registry");
@@ -52,6 +46,7 @@ public class GameWebSocket
     @OnTextMessage
     public void onMessage(ClientMessage clientMessage, WebSocketConnection connection)
     {
+        Log.info("================================= ONMESSAGE ===========================================");
         Log.info("Received message from client in onMessage: " + clientMessage);
         if (clientMessage == null || clientMessage.actionType == null)
         {
@@ -70,14 +65,14 @@ public class GameWebSocket
 
         if (clientMessage.actionType == ActionType.MAKE_MOVE)
         {
-            gameManagmentService.makeMove(gameId, clientMessage.position);
+            gameManagementService.makeMove(gameId, clientMessage.position, connection);
             sendGameState(gameId);
         }
     }
 
     public void sendGameState(String gameId)
     {
-        GameStateDTO gameState = gameManagmentService.getGameState(gameId);
+        GameStateDTO gameState = gameManagementService.getGameState(gameId);
         Set<WebSocketConnection> connections = gameRegistry.getActiveConnections(gameId);
         for (WebSocketConnection conn : connections)
         {

@@ -1,5 +1,6 @@
 package dev.tictactoe.game;
 
+import io.quarkus.logging.Log;
 import lombok.Getter;
 
 import java.util.Arrays;
@@ -22,8 +23,13 @@ public class TicTacToeGame
         this.status = GameStatus.IN_PROGRESS;
     }
 
-    public void makeMove(int position)
+    public void makeMove(int position, Mark role)
     {
+        if (role != currentTurn)
+        {
+            Log.info("It's not " + role + "'s turn. Current turn: " + currentTurn);
+            return;
+        }
         validateMove(position);
         board[position] = currentTurn;
         updateGameStatus();
@@ -51,6 +57,14 @@ public class TicTacToeGame
         if (board[position] != null)
         {
             throw new IllegalArgumentException("Position already taken");
+        }
+    }
+
+    private void validateRole(Mark role, Mark expectedRole)
+    {
+        if (role != expectedRole)
+        {
+            throw new IllegalArgumentException("It's not " + role + "'s turn");
         }
     }
 

@@ -21,7 +21,7 @@ public class GameRegistry
         Log.info("gamesList after removal: " + gamesList + "");
     }
 
-    public void addGame(String gameId, WebSocketConnection connection)
+    public void addGameConnection(String gameId, WebSocketConnection connection)
     {
         if(gameId == null)
         {
