@@ -1,5 +1,9 @@
-package dev.tictactoe.game;
+package dev.tictactoe.game.service;
 
+import dev.tictactoe.game.model.GameParticipant;
+import dev.tictactoe.game.engine.TicTacToeGame;
+import dev.tictactoe.game.dto.GameStateDTO;
+import dev.tictactoe.game.model.GameRole;
 import io.quarkus.logging.Log;
 import io.quarkus.websockets.next.WebSocketConnection;
 import jakarta.enterprise.context.ApplicationScoped;

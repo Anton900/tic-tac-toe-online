@@ -1,5 +1,7 @@
-package dev.tictactoe.game;
+package dev.tictactoe.game.dto;
 
+import dev.tictactoe.game.model.GameStatus;
+import dev.tictactoe.game.model.Mark;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;

@@ -1,4 +1,4 @@
-package dev.tictactoe.game;
+package dev.tictactoe.game.model;
 
 import io.quarkus.websockets.next.WebSocketConnection;
 import lombok.AllArgsConstructor;

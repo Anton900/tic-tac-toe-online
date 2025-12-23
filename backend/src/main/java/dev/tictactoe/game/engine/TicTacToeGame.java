@@ -1,5 +1,7 @@
-package dev.tictactoe.game;
+package dev.tictactoe.game.engine;
 
+import dev.tictactoe.game.model.GameStatus;
+import dev.tictactoe.game.model.Mark;
 import io.quarkus.logging.Log;
 import lombok.Getter;
 

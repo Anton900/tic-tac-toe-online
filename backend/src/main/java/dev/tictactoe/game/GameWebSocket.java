@@ -1,5 +1,10 @@
 package dev.tictactoe.game;
 
+import dev.tictactoe.game.dto.GameStateDTO;
+import dev.tictactoe.game.model.ActionType;
+import dev.tictactoe.game.model.ClientMessage;
+import dev.tictactoe.game.registry.GameRegistry;
+import dev.tictactoe.game.service.GameManagementService;
 import io.quarkus.logging.Log;
 import io.quarkus.websockets.next.*;
 import jakarta.inject.Inject;

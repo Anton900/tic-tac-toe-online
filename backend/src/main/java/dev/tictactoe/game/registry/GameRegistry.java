@@ -1,4 +1,4 @@
-package dev.tictactoe.game;
+package dev.tictactoe.game.registry;
 
 import io.quarkus.logging.Log;
 import io.quarkus.websockets.next.WebSocketConnection;
