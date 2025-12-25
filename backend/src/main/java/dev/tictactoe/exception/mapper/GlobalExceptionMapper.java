@@ -1,0 +1,22 @@
+package dev.tictactoe.exception.mapper;
+
+import dev.tictactoe.exception.ApiError;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.ext.ExceptionMapper;
+import jakarta.ws.rs.ext.Provider;
+
+@Provider
+public class GlobalExceptionMapper implements ExceptionMapper<Exception>
+{
+    @Override
+    public Response toResponse(Exception exception)
+    {
+        return Response
+                .status(Response.Status.INTERNAL_SERVER_ERROR)
+                .entity(new ApiError(
+                        "INTERNAL_ERROR",
+                        "Something went wrong"
+                ))
+                .build();
+    }
+}

@@ -23,7 +23,7 @@ public class GameWebSocket
     @OnOpen
     void onOpen(WebSocketConnection connection)
     {
-        Log.info("================================= ONOPEN ===========================================");
+        Log.info("================================= ON OPEN ===========================================");
         String gameId = connection.pathParam("gameId");
         if (gameId == null || gameId.isBlank())
         {
@@ -32,7 +32,7 @@ public class GameWebSocket
             return;
         }
 
-        gameManagementService.manageGameOnOpen(gameId, connection);
+        gameManagementService.joinCurrentGame(gameId, connection);
         gameRegistry.addGameConnection(gameId, connection);
         sendGameState(gameId);
         Log.infof("Connection opened for gameId=%s", gameId);
@@ -41,7 +41,7 @@ public class GameWebSocket
     @OnClose
     void onClose(WebSocketConnection connection)
     {
-        Log.info("================================= ONCLOSE ===========================================");
+        Log.info("================================= ON CLOSE ===========================================");
 
         gameRegistry.removeConnection(connection);
         connection.close();
@@ -51,28 +51,48 @@ public class GameWebSocket
     @OnTextMessage
     public void onMessage(ClientMessage clientMessage, WebSocketConnection connection)
     {
-        Log.info("================================= ONMESSAGE ===========================================");
+        Log.info("================================= ON MESSAGE ===========================================");
         Log.info("Received message from client in onMessage: " + clientMessage);
-        if (clientMessage == null || clientMessage.actionType == null)
+
+        String gameId = connection.pathParam("gameId");
+        if(!validClientMessage(clientMessage) || !validGameId(connection))
         {
-            Log.warn("Received null or invalid client message");
             return;
         }
         Log.info("Received message: " + clientMessage + "");
 
-        String gameId = connection.pathParam("gameId");
 
-        if (gameId == null || gameId.isBlank())
+        if (clientMessage.actionType == ActionType.CREATE_GAME)
         {
-            Log.warn("Missing gameId for incoming message; ignoring");
-            return;
+            gameManagementService.makeMove(gameId, clientMessage.position, connection);
+            sendGameState(gameId);
         }
-
         if (clientMessage.actionType == ActionType.MAKE_MOVE)
         {
             gameManagementService.makeMove(gameId, clientMessage.position, connection);
             sendGameState(gameId);
         }
+    }
+
+    private boolean validGameId(WebSocketConnection connection)
+    {
+        String gameId = connection.pathParam("gameId");
+        if (gameId == null || gameId.isBlank())
+        {
+            Log.warn("Missing or empty gameId in connection");
+            return false;
+        }
+        return true;
+    }
+
+    private boolean validClientMessage(ClientMessage clientMessage)
+    {
+        if (clientMessage == null || clientMessage.actionType == null)
+        {
+            Log.warn("Received null or invalid client message");
+            return false;
+        }
+        return true;
     }
 
     public void sendGameState(String gameId)

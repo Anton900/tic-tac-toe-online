@@ -1,12 +1,15 @@
 package dev.tictactoe.game.service;
 
+import dev.tictactoe.exception.GameException;
 import dev.tictactoe.game.model.GameParticipant;
 import dev.tictactoe.game.engine.TicTacToeGame;
 import dev.tictactoe.game.dto.GameStateDTO;
 import dev.tictactoe.game.model.GameRole;
+import dev.tictactoe.game.model.GameSession;
 import io.quarkus.logging.Log;
 import io.quarkus.websockets.next.WebSocketConnection;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.ws.rs.core.Response;
 
 import java.util.Map;
 import java.util.Set;
@@ -15,41 +18,33 @@ import java.util.concurrent.ConcurrentHashMap;
 @ApplicationScoped
 public class GameManagementService
 {
-    private final Map<String, TicTacToeGame> gameList = new ConcurrentHashMap<>();
-    private final Map<String, Set<GameParticipant>> participantsList = new ConcurrentHashMap<>();
+    private final Map<String, GameSession> gameSessions = new ConcurrentHashMap<>();
 
-
-    public void manageGameOnOpen(String gameId, WebSocketConnection connection)
+    public void joinCurrentGame(String gameId, WebSocketConnection connection)
     {
+        // Check that a game exists for the given gameId
         TicTacToeGame game = getGame(gameId);
-        if (game == null)
+        if (game != null)
         {
-            Log.info(("Creating new game for gameId=%s").formatted(gameId));
-            createGame(gameId, connection);
+            Log.info(("Reusing existing game for gameId=%s").formatted(gameId));
+            addParticipant(gameId, connection);
         }
         else
         {
-            Log.info(("Reusing existing game for gameId=%s").formatted(gameId));
+            Log.info(("No active game to join for gameId=%s").formatted(gameId));
+            throw new GameException(Response.Status.NOT_FOUND, "GAME_NOT_FOUND", "Game doesn't exist for gameId: " + gameId);
         }
-        addParticipant(gameId, connection);
     }
 
     public void createGame(String gameId, WebSocketConnection connection)
     {
-        Log.info("CREATE Participants List: " + participantsList);
-        gameList.put(gameId, new TicTacToeGame());
-        participantsList.put(gameId, ConcurrentHashMap.newKeySet());
-        participantsList.get(gameId).add(GameParticipant.builder()
-                .connection(connection)
-                .role(GameRole.PLAYER_X)
-                .build());
-        Log.info("CREATE AFTER Participants List: " + participantsList);
+        gameSessions.put(gameId, new GameSession());
+        addParticipant(gameId, connection);
     }
 
     public void addParticipant(String gameId, WebSocketConnection connection)
     {
-        Log.info("ADD Participants List: " + participantsList);
-        Set<GameParticipant> participants = participantsList.computeIfAbsent(gameId, k -> ConcurrentHashMap.newKeySet());
+        Set<GameParticipant> participants = gameSessions.get(gameId).getGameParticipants();
 
         synchronized (participants)
         {
@@ -92,15 +87,14 @@ public class GameManagementService
 
     public void makeMove(String gameId, int position, WebSocketConnection connection)
     {
-        Log.info("Participants List: " + participantsList);
         TicTacToeGame game = getGame(gameId);
-        Set<GameParticipant> gameParticipants = participantsList.get(gameId);
-        if(gameParticipants == null)
+        Set<GameParticipant> participants = gameSessions.get(gameId).getGameParticipants();
+        if(participants == null)
         {
             throw new IllegalStateException("No participants found for gameId: " + gameId);
         }
 
-        GameParticipant participant = gameParticipants.stream()
+        GameParticipant participant = participants.stream()
                 .filter(p -> p.getConnection().equals(connection))
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("Participant not found for the given connection"));
@@ -117,18 +111,11 @@ public class GameManagementService
 
     public TicTacToeGame getGame(String gameId)
     {
-        TicTacToeGame game = gameList.get(gameId);
-        return game;
-    }
-
-    public Set<GameParticipant> getParticpants(String gameId)
-    {
-        return participantsList.get(gameId);
-    }
-
-    public void removeGame(String gameId)
-    {
-        gameList.remove(gameId);
+        if(!gameSessions.containsKey(gameId))
+        {
+            return null;
+        }
+        return gameSessions.get(gameId).getTicTacToeGame();
     }
 
     public GameStateDTO getGameState(String gameId)

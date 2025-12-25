@@ -1,4 +1,4 @@
-package service;
+package dev.tictactoe.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
 
