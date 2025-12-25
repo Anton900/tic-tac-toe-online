@@ -7,13 +7,15 @@
       :status="status"
       :currentTurn="currentTurn"
       :board="board"
+      :playerX="playerX"
+      :playerO="playerO"
       @cell-click="handleClickCell"
     />
 
     <div class="flex gap-4">
       <button
         class="btn btn-secondary"
-        @click="goHome"
+        @click="goBack"
       >
         Leave Game
       </button>
@@ -37,15 +39,27 @@ const route = useRoute()
 const router = useRouter()
 
 const gameId = ref(route.params.gameId)
+const InitActionType = sessionStorage.getItem('initActionType') ?? 'RECONNECT'
 let socket = null
 
 const board = ref([])
 const currentTurn = ref(null)
 const status = ref(null)
+const playerX = ref('')
+const playerO = ref('')
 
 function setupSocketHandlers(ws, id) {
   ws.onopen = () => {
     console.log('WebSocket connected to', id)
+
+    console.log("InitActionType:", InitActionType.value)
+    ws.send(JSON.stringify({
+        actionType: InitActionType,
+        gameId: id
+    }))
+
+    sessionStorage.setItem('initActionType', 'RECONNECT')
+
   }
   ws.onmessage = (event) => {
     console.log('Received:', event.data)
@@ -54,6 +68,8 @@ function setupSocketHandlers(ws, id) {
     board.value = gameState.board
     currentTurn.value = gameState.currentTurn
     status.value = gameState.status
+    playerX.value = gameState.playerX || ''
+    playerO.value = gameState.playerO || ''
   }
   ws.onclose = () => {
     console.log('WebSocket closed')
@@ -69,13 +85,19 @@ function connectSocket(id) {
     try { socket.close() } catch(e) {}
     socket = null
   }
-  socket = new WebSocket(`ws://localhost:8080/game/${id}`)
-  setupSocketHandlers(socket, id)
+  try
+  {
+      socket = new WebSocket(`ws://localhost:8080/game/${id}`)
+      setupSocketHandlers(socket, id)
+  } catch(e) {
+    console.error('Failed to connect WebSocket', e)
+    alert('Failed to connect to game server: ' + e.message)
+  }
 }
 
 async function createRematch() {
   try {
-    const res = await fetch('http://localhost:8080/game', { method: 'POST' })
+    const res = await fetch('http://localhost:8080/game/createGameId', { method: 'GET' })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const id = await res.text()
     
@@ -85,16 +107,16 @@ async function createRematch() {
       socket = null
     }
     
-    // Navigate to new game
-    router.push(`/game/${id}`)
+    // Navigate to new game with CREATE_GAME action
+    router.push({ path: `/game/${id}`, state: { actionType: 'CREATE_GAME' } })
   } catch (e) {
     console.error('Failed to create rematch', e)
     alert('Failed to create rematch: ' + e.message)
   }
 }
 
-function goHome() {
-  router.push('/')
+function goBack() {
+  router.push('/CreateJoin')
 }
 
 function handleClickCell(index) {
