@@ -20,7 +20,7 @@ public class GameManagementService
 {
     private final Map<String, GameSession> gameSessions = new ConcurrentHashMap<>();
 
-    public void joinCurrentGame(String gameId, WebSocketConnection connection)
+    public boolean joinedCurrentGame(String gameId, WebSocketConnection connection)
     {
         // Check that a game exists for the given gameId
         TicTacToeGame game = getGame(gameId);
@@ -28,11 +28,13 @@ public class GameManagementService
         {
             Log.info(("Reusing existing game for gameId=%s").formatted(gameId));
             addParticipant(gameId, connection);
+            return true;
         }
         else
         {
             Log.info(("No active game to join for gameId=%s").formatted(gameId));
-            throw new GameException(Response.Status.NOT_FOUND, "GAME_NOT_FOUND", "Game doesn't exist for gameId: " + gameId);
+          //  throw new GameException(Response.Status.NOT_FOUND, "GAME_NOT_FOUND", "Game doesn't exist for gameId: " + gameId);
+            return false;
         }
     }
 
@@ -121,6 +123,10 @@ public class GameManagementService
     public GameStateDTO getGameState(String gameId)
     {
         TicTacToeGame game = getGame(gameId);
+        if (game == null)
+        {
+            throw new GameException(Response.Status.NOT_FOUND, "GAME_NOT_FOUND", "Game doesn't exist for gameId: " + gameId);
+        }
         return GameStateDTO.builder()
                 .board(game.getBoard().clone())
                 .status(game.getStatus())

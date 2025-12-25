@@ -32,10 +32,17 @@ public class GameWebSocket
             return;
         }
 
-        gameManagementService.joinCurrentGame(gameId, connection);
-        gameRegistry.addGameConnection(gameId, connection);
-        sendGameState(gameId);
-        Log.infof("Connection opened for gameId=%s", gameId);
+        boolean joinedGame = gameManagementService.joinedCurrentGame(gameId, connection);
+        if(joinedGame)
+        {
+            gameRegistry.addGameConnection(gameId, connection);
+            sendGameState(gameId);
+            Log.infof("Connection opened for gameId=%s", gameId);
+        }
+        else
+        {
+            Log.infof("No existing game to join for gameId=%s", gameId);
+        }
     }
 
     @OnClose
@@ -61,14 +68,16 @@ public class GameWebSocket
         }
         Log.info("Received message: " + clientMessage + "");
 
-
         if (clientMessage.actionType == ActionType.CREATE_GAME)
         {
-            gameManagementService.makeMove(gameId, clientMessage.position, connection);
+            Log.infof("Creating new game for gameId=%s", gameId);
+            gameManagementService.createGame(gameId, connection);
+            gameRegistry.addGameConnection(gameId, connection);
             sendGameState(gameId);
         }
         if (clientMessage.actionType == ActionType.MAKE_MOVE)
         {
+            Log.infof("Making move for gameId=%s at position=%d", gameId, clientMessage.position);
             gameManagementService.makeMove(gameId, clientMessage.position, connection);
             sendGameState(gameId);
         }
