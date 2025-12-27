@@ -1,6 +1,7 @@
 <template>
   <div class="min-h-screen flex flex-col items-center justify-center gap-6 bg-gray-900 text-gray-100">
-    <h1 class="text-3xl font-bold mb-10">Tic Tac Toe</h1>
+    <h1 class="text-3xl font-bold">Tic Tac Toe</h1>
+    <h2 class="text-xl font-semibold mb-2">Game ID: <span class="text-yellow-400">{{ gameId }}</span></h2>
 
     <GameBoard
       :gameId="gameId"
@@ -63,13 +64,24 @@ function setupSocketHandlers(ws, id) {
   }
   ws.onmessage = (event) => {
     console.log('Received:', event.data)
-    let gameState = JSON.parse(event.data)
+    const message = JSON.parse(event.data)
+
+    console.log("Message from backend:", message)
+    console.log("Message from backend type:", message.type)
+    switch (message.type) {
+      case 'GAME_STATE':
+        updateGameState(message.gameState)
+        break
+      case 'ERROR':
+        alert('Error from server: ' + message.message)
+        break
+      default:
+        console.warn('Unknown type from server:', message.type)
+    }
 
     board.value = gameState.board
     currentTurn.value = gameState.currentTurn
     status.value = gameState.status
-    playerX.value = gameState.playerX || ''
-    playerO.value = gameState.playerO || ''
   }
   ws.onclose = () => {
     console.log('WebSocket closed')
@@ -77,6 +89,14 @@ function setupSocketHandlers(ws, id) {
   ws.onerror = (e) => {
     console.error('WebSocket error', e)
   }
+}
+
+function updateGameState(newState) {
+  board.value = newState.board
+  currentTurn.value = newState.currentTurn
+  status.value = newState.status
+  playerX.value = newState.playerX || ''
+  playerO.value = newState.playerO || ''
 }
 
 function connectSocket(id) {
@@ -130,7 +150,8 @@ function handleClickCell(index) {
 
   socket.send(JSON.stringify({
     actionType: 'MAKE_MOVE',
-    position: index
+    position: index,
+    gameId: gameId.value
   }))
 }
 

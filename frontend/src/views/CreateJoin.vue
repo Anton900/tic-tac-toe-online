@@ -2,7 +2,7 @@
   <div class="min-h-screen flex flex-col items-center justify-center gap-6 bg-gray-900 text-gray-100">
     <h1 class="text-5xl font-bold mb-10">Tic Tac Toe Online</h1>
     
-    <p class="text-xl text-gray-300 mb-6">Hiya, <span class="font-bold text-yellow-400">{{ playerName }}</span>, play tic-tac-toe with friends in real-time!</p>
+    <p class="text-xl text-gray-300 mb-6">Hiya, <span class="font-bold text-yellow-400">{{ playerName }}</span>, create a new game or join an existing one to start playing!</p>
 
     <div class="flex flex-col gap-4 items-center">
       <button
@@ -34,6 +34,7 @@
     <div class="mt-10">
         <button
           class="btn btn-accent"
+          style="opacity:0.7"
           @click="goBack"
         >
           Enter new player name

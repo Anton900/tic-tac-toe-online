@@ -1,6 +1,8 @@
 <template>
   <div class="min-h-screen flex flex-col items-center justify-center gap-6 bg-gray-900 text-gray-100">
     <h1 class="text-5xl font-bold mb-10">Tic Tac Toe Online</h1>
+    <p class="text-3xl text-gray-100">Welcome!</p>
+    <p class="text-xl text-gray-300">Enter a display player name to play TicTacToe</p>
     
       <div class="flex gap-2">
         <input 
