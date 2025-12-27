@@ -1,7 +1,9 @@
 package dev.tictactoe.exception;
 
 import jakarta.ws.rs.core.Response;
+import lombok.Getter;
 
+@Getter
 public class GameException extends RuntimeException
 {
 
@@ -17,15 +19,5 @@ public class GameException extends RuntimeException
         super(message);
         this.status = status;
         this.code = code;
-    }
-
-    public Response.Status getStatus()
-    {
-        return status;
-    }
-
-    public String getCode()
-    {
-        return code;
     }
 }

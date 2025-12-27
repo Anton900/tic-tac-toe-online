@@ -1,8 +1,11 @@
 package dev.tictactoe.game.engine;
 
+import dev.tictactoe.exception.GameException;
+import dev.tictactoe.exception.InvalidMoveException;
 import dev.tictactoe.game.model.GameStatus;
 import dev.tictactoe.game.model.Mark;
 import io.quarkus.logging.Log;
+import jakarta.ws.rs.core.Response;
 import lombok.Getter;
 
 import java.util.Arrays;
@@ -50,15 +53,15 @@ public class TicTacToeGame
     {
         if (status != GameStatus.IN_PROGRESS)
         {
-            throw new IllegalStateException("Game is already finished");
+            throw new InvalidMoveException("Game is already finished");
         }
         if (position < 0 || position >= BOARD_SIZE)
         {
-            throw new IllegalArgumentException("Invalid board position");
+            throw new InvalidMoveException("Invalid board position");
         }
         if (board[position] != null)
         {
-            throw new IllegalArgumentException("Position already taken");
+            throw new InvalidMoveException("Position already taken");
         }
     }
 
@@ -66,7 +69,11 @@ public class TicTacToeGame
     {
         if (role != expectedRole)
         {
-            throw new IllegalArgumentException("It's not " + role + "'s turn");
+            throw new GameException(
+                    Response.Status.BAD_REQUEST,
+                    "NOT_YOUR_TURN",
+                    "It's not " + role + "'s turn."
+            );
         }
     }
 

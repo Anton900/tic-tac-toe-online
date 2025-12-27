@@ -1,12 +1,15 @@
 package dev.tictactoe.game;
 
+import dev.tictactoe.exception.ApiError;
+import dev.tictactoe.exception.GameException;
+import dev.tictactoe.exception.GameNotFoundException;
 import dev.tictactoe.game.dto.GameStateDTO;
-import dev.tictactoe.game.model.ActionType;
-import dev.tictactoe.game.model.ClientMessage;
+import dev.tictactoe.game.model.*;
 import dev.tictactoe.game.registry.GameRegistry;
 import dev.tictactoe.game.service.GameManagementService;
 import io.quarkus.logging.Log;
 import io.quarkus.websockets.next.*;
+import io.vertx.core.json.Json;
 import jakarta.inject.Inject;
 
 import java.util.Set;
@@ -33,10 +36,9 @@ public class GameWebSocket
         }
 
         boolean joinedGame = gameManagementService.joinedCurrentGame(gameId, connection);
-        if(joinedGame)
+        if (joinedGame)
         {
-            gameRegistry.addGameConnection(gameId, connection);
-            sendGameState(gameId);
+            gameManagementService.sendGameState(gameId);
             Log.infof("Connection opened for gameId=%s", gameId);
         }
         else
@@ -50,7 +52,7 @@ public class GameWebSocket
     {
         Log.info("================================= ON CLOSE ===========================================");
 
-        gameRegistry.removeConnection(connection);
+        gameManagementService.removeParticipant(connection);
         connection.close();
         Log.info("Connection closed and removed from registry");
     }
@@ -61,37 +63,35 @@ public class GameWebSocket
         Log.info("================================= ON MESSAGE ===========================================");
         Log.info("Received message from client in onMessage: " + clientMessage);
 
-        String gameId = connection.pathParam("gameId");
-        if(!validClientMessage(clientMessage) || !validGameId(connection))
+        if (!validClientMessage(clientMessage))
         {
             return;
         }
         Log.info("Received message: " + clientMessage + "");
 
-        if (clientMessage.actionType == ActionType.CREATE_GAME)
+        try
         {
-            Log.infof("Creating new game for gameId=%s", gameId);
-            gameManagementService.createGame(gameId, connection);
-            gameRegistry.addGameConnection(gameId, connection);
-            sendGameState(gameId);
+            gameManagementService.handleMessage(clientMessage, connection);
         }
-        if (clientMessage.actionType == ActionType.MAKE_MOVE)
+        catch (GameException gameException)
         {
-            Log.infof("Making move for gameId=%s at position=%d", gameId, clientMessage.position);
-            gameManagementService.makeMove(gameId, clientMessage.position, connection);
-            sendGameState(gameId);
+            Log.errorf("GameException occurred: %s", gameException.getMessage());
+            sendError(
+                    connection,
+                    gameException.getCode(),
+                    gameException.getMessage()
+            );
         }
-    }
+        catch (Exception e)
+        {
+            Log.errorf("Unexpected exception occurred: %s", e.getMessage());
+            sendError(
+                    connection,
+                    "INTERNAL_SERVER_ERROR",
+                    e.getMessage()
+            );
 
-    private boolean validGameId(WebSocketConnection connection)
-    {
-        String gameId = connection.pathParam("gameId");
-        if (gameId == null || gameId.isBlank())
-        {
-            Log.warn("Missing or empty gameId in connection");
-            return false;
         }
-        return true;
     }
 
     private boolean validClientMessage(ClientMessage clientMessage)
@@ -104,26 +104,26 @@ public class GameWebSocket
         return true;
     }
 
-    public void sendGameState(String gameId)
+    private void sendError(
+            WebSocketConnection connection,
+            String code,
+            String message
+    )
     {
-        GameStateDTO gameState = gameManagementService.getGameState(gameId);
-        Set<WebSocketConnection> connections = gameRegistry.getActiveConnections(gameId);
-        for (WebSocketConnection conn : connections)
+        try
         {
-            try
-            {
-                Log.infof("Sending updated game state to client for gameId=%s", gameId);
-                conn.sendText(gameState)
-                        .subscribe()
-                        .with(
-                                ignored -> Log.infof("IGNORED: Game state sent successfully to client for gameId=%s", gameId),
-                                failure -> Log.errorf("FAILURE: Failed to send game state to client for gameId=%s: %s", gameId,
-                                        failure.getMessage())
-                        );
-            } catch (Exception e)
-            {
-                Log.error("Error sending game state to client", e);
-            }
+            ErrorMessage error = new ErrorMessage(code, message);
+            connection.sendText(Json.encode(error))
+                    .subscribe()
+                    .with(
+                            ignored -> Log.infof("IGNORED: Error sent successfully to client"),
+                            failure -> Log.errorf("FAILURE: Failed to send error to client. Failure message: %s",
+                                    failure.getMessage())
+                    );
+        }
+        catch (Exception e)
+        {
+            Log.error("Failed to send error to client", e);
         }
     }
 }

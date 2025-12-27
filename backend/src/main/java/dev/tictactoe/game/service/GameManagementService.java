@@ -1,13 +1,14 @@
 package dev.tictactoe.game.service;
 
 import dev.tictactoe.exception.GameException;
-import dev.tictactoe.game.model.GameParticipant;
+import dev.tictactoe.exception.GameNotFoundException;
+import dev.tictactoe.exception.InvalidMoveException;
+import dev.tictactoe.game.model.*;
 import dev.tictactoe.game.engine.TicTacToeGame;
 import dev.tictactoe.game.dto.GameStateDTO;
-import dev.tictactoe.game.model.GameRole;
-import dev.tictactoe.game.model.GameSession;
 import io.quarkus.logging.Log;
 import io.quarkus.websockets.next.WebSocketConnection;
+import io.vertx.core.json.Json;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.core.Response;
 
@@ -19,6 +20,30 @@ import java.util.concurrent.ConcurrentHashMap;
 public class GameManagementService
 {
     private final Map<String, GameSession> gameSessions = new ConcurrentHashMap<>();
+
+    public void handleMessage(ClientMessage clientMessage, WebSocketConnection connection)
+    {
+        String gameId = clientMessage.getGameId();
+        if (gameId == null || gameId.isBlank())
+        {
+            Log.warn("Received message with missing or empty gameId");
+            return;
+        }
+
+        if (clientMessage.actionType == ActionType.CREATE_GAME)
+        {
+            Log.infof("Creating new game for gameId=%s", gameId);
+            createGame(gameId, connection);
+            addParticipant(gameId, connection);
+            sendGameState(gameId);
+        }
+        if (clientMessage.actionType == ActionType.MAKE_MOVE)
+        {
+            Log.infof("Making move for gameId=%s at position=%d", gameId, clientMessage.position);
+            makeMove(gameId, clientMessage.position, connection);
+            sendGameState(gameId);
+        }
+    }
 
     public boolean joinedCurrentGame(String gameId, WebSocketConnection connection)
     {
@@ -93,7 +118,7 @@ public class GameManagementService
         Set<GameParticipant> participants = gameSessions.get(gameId).getGameParticipants();
         if(participants == null)
         {
-            throw new IllegalStateException("No participants found for gameId: " + gameId);
+            throw new GameException(Response.Status.NOT_FOUND, "NO_PARTICAPNTS_FOUND", "No participants found for gameId: " + gameId);
         }
 
         GameParticipant participant = participants.stream()
@@ -101,14 +126,7 @@ public class GameManagementService
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("Participant not found for the given connection"));
 
-        try
-        {
-            game.makeMove(position, participant.getRole().toMark());
-        }
-        catch (IllegalArgumentException | IllegalStateException e)
-        {
-            Log.warn("Invalid move attempt by " + participant.getRole() + ": " + e.getMessage());
-        }
+        game.makeMove(position, participant.getRole().toMark());
     }
 
     public TicTacToeGame getGame(String gameId)
@@ -132,5 +150,58 @@ public class GameManagementService
                 .status(game.getStatus())
                 .currentTurn(game.getCurrentTurn())
                 .build();
+    }
+
+    public void removeParticipant(WebSocketConnection connection)
+    {
+        for (Map.Entry<String, GameSession> entry : gameSessions.entrySet())
+        {
+            String gameId = entry.getKey();
+            GameSession session = entry.getValue();
+            Set<GameParticipant> participants = session.getGameParticipants();
+
+            synchronized (participants)
+            {
+                boolean removed = participants.removeIf(p -> p.getConnection().equals(connection));
+                if (removed)
+                {
+                    Log.info("Removed participant from gameId=" + gameId);
+                }
+            }
+        }
+    }
+
+    public Set<GameParticipant> getGameParticpants(String gameId)
+    {
+        GameSession session = gameSessions.get(gameId);
+        if (session == null)
+        {
+            throw new GameException(Response.Status.NOT_FOUND, "GAME_NOT_FOUND", "Game doesn't exist for gameId: " + gameId);
+        }
+        return session.getGameParticipants();
+    }
+
+    public void sendGameState(String gameId)
+    {
+        GameStateDTO gameState = getGameState(gameId);
+        Set<GameParticipant> gameParticipants = getGameParticpants(gameId);
+        for (GameParticipant gameParticipant : gameParticipants)
+        {
+            try
+            {
+                GameStateMessage gameStateMessage = new GameStateMessage(gameState);
+                Log.infof("Sending updated game state to client for gameId=%s", gameId);
+                gameParticipant.getConnection().sendText(gameStateMessage)
+                        .subscribe()
+                        .with(
+                                ignored -> Log.infof("IGNORED: Game state sent successfully to client for gameId=%s", gameId),
+                                failure -> Log.errorf("FAILURE: Failed to send game state to client for gameId=%s: %s", gameId,
+                                        failure.getMessage())
+                        );
+            } catch (Exception e)
+            {
+                Log.error("Error sending game state to client", e);
+            }
+        }
     }
 }

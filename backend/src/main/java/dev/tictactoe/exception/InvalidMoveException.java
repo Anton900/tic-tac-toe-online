@@ -2,13 +2,13 @@ package dev.tictactoe.exception;
 
 import jakarta.ws.rs.core.Response;
 
-public class GameNotFoundException extends GameException {
+public class InvalidMoveException extends GameException {
 
-    public GameNotFoundException(String gameId) {
+    public InvalidMoveException(String message) {
         super(
-                Response.Status.NOT_FOUND,
-                "GAME_NOT_FOUND",
-                "Game with id " + gameId + " does not exist"
+                Response.Status.CONFLICT,
+                "INVALID_MOVE",
+                "Illegal move - " + message
         );
     }
 }
