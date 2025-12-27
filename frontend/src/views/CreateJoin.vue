@@ -52,27 +52,79 @@ const router = useRouter()
 const gameIdInput = ref('')
 const playerName = sessionStorage.getItem('playerName') || 'Guest'
 
+const BACKEND_URL = 'http://localhost:8080'
+const WS_TIMEOUT = 5000
+
 async function createGame() {
   try {
-    const res = await fetch('http://localhost:8080/game/createGameId', { method: 'GET' })
+    const res = await fetch(`${BACKEND_URL}/game/createGameId`, { method: 'GET' })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const id = await res.text()
-    router.push({ path: `/game/${id}` })
+    
     sessionStorage.setItem('initActionType', 'CREATE_GAME')
+    router.push(`/game/${id}`)
   } catch (e) {
-    console.error('Failed to create game', e)
+    console.error('Failed to create game:', e)
     alert('Failed to create game: ' + e.message)
   }
 }
 
-function joinGame() {
+async function joinGame() {
   const id = gameIdInput.value.trim()
   if (!id) {
     alert('Enter a game ID to join')
     return
   }
-  router.push(`/game/${id}`)
-  sessionStorage.setItem('initActionType', 'JOIN_GAME')
+
+  try {
+    await validateGameExists(id)
+    sessionStorage.setItem('initActionType', 'JOIN_GAME')
+    router.push(`/game/${id}`)
+  } catch (e) {
+    console.error('Failed to join game:', e)
+    alert('Failed to join game: ' + e.message)
+  }
+}
+
+function validateGameExists(gameId) {
+  return new Promise((resolve, reject) => {
+    const ws = new WebSocket(`${BACKEND_URL.replace('http', 'ws')}/game/${gameId}`)
+    
+    const timeout = setTimeout(() => {
+      cleanup()
+      reject(new Error('Connection timeout'))
+    }, WS_TIMEOUT)
+
+    const cleanup = () => {
+      clearTimeout(timeout)
+      ws.close()
+    }
+
+    ws.onopen = () => {
+      ws.send(JSON.stringify({
+        actionType: 'JOIN_GAME',
+        gameId
+      }))
+    }
+
+    ws.onmessage = (event) => {
+      const message = JSON.parse(event.data)
+      cleanup()
+      
+      if (message.type === 'ERROR') {
+        reject(new Error(message.errorMessage || 'Game not found'))
+      } else if (message.type === 'GAME_STATE') {
+        resolve()
+      } else {
+        reject(new Error('Unexpected response from server'))
+      }
+    }
+
+    ws.onerror = () => {
+      cleanup()
+      reject(new Error('Failed to connect to game server'))
+    }
+  })
 }
 
 function goBack() {

@@ -53,7 +53,7 @@ function setupSocketHandlers(ws, id) {
   ws.onopen = () => {
     console.log('WebSocket connected to', id)
 
-    console.log("InitActionType:", InitActionType.value)
+    console.log("InitActionType:", InitActionType)
     ws.send(JSON.stringify({
         actionType: InitActionType,
         gameId: id
@@ -73,7 +73,10 @@ function setupSocketHandlers(ws, id) {
         updateGameState(message.gameState)
         break
       case 'ERROR':
-        alert('Error from server: ' + message.message)
+        console.log("Message from backend errorCode:", message.errorCode)
+        console.log("Message from backend errorMessage:", message.errorMessage)
+        alert('Error from server: ' + message.errorMessage)
+        goBack()
         break
       default:
         console.warn('Unknown type from server:', message.type)
