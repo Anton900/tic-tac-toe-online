@@ -2,13 +2,14 @@ package dev.tictactoe.game.service;
 
 import dev.tictactoe.exception.GameException;
 import dev.tictactoe.exception.GameNotFoundException;
-import dev.tictactoe.exception.InvalidMoveException;
 import dev.tictactoe.game.model.*;
 import dev.tictactoe.game.engine.TicTacToeGame;
 import dev.tictactoe.game.dto.GameStateDTO;
+import dev.tictactoe.game.model.client.ClientMessage;
+import dev.tictactoe.game.model.server.GameStateMessage;
+import dev.tictactoe.game.model.server.RematchCreatedMessage;
 import io.quarkus.logging.Log;
 import io.quarkus.websockets.next.WebSocketConnection;
-import io.vertx.core.json.Json;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.core.Response;
 
@@ -40,6 +41,14 @@ public class GameManagementService
         {
             joinGame(gameId, connection);
             sendGameState(gameId);
+        }
+        if (clientMessage.actionType == ActionType.CREATE_REMATCH)
+        {
+            String previousGameId = clientMessage.getPreviousGameId();
+            Log.infof("Creating rematch game with gameId=%s and rematchGameId=%s", previousGameId, gameId);
+            createRematch(gameId, connection);
+            sendGameState(gameId); // Send game state for player that clicked on rematch
+            sendRematch(previousGameId, gameId); // Send rematch notification to other player and spectators
         }
         if (clientMessage.actionType == ActionType.MAKE_MOVE)
         {
@@ -83,6 +92,14 @@ public class GameManagementService
     {
         gameSessions.put(gameId, new GameSession());
         addParticipant(gameId, connection);
+    }
+
+    public void createRematch(String newGameId, WebSocketConnection connection)
+    {
+        GameSession gameSesson = new GameSession();
+        gameSesson.markRematchCreated();
+        gameSessions.put(newGameId, gameSesson);
+        addParticipant(newGameId, connection);
     }
 
     public void addParticipant(String gameId, WebSocketConnection connection)
@@ -220,4 +237,28 @@ public class GameManagementService
             }
         }
     }
+
+    public void sendRematch(String oldGameId, String newGameId)
+    {
+        Set<GameParticipant> gameParticipants = getGameParticpants(oldGameId);
+        for (GameParticipant gameParticipant : gameParticipants)
+        {
+            try
+            {
+                RematchCreatedMessage rematchCreatedMessage = new RematchCreatedMessage(newGameId);
+                Log.infof("Sending rematch created message to client for oldGameId=%s and newGameId=%s", oldGameId, newGameId);
+                gameParticipant.getConnection().sendText(rematchCreatedMessage)
+                        .subscribe()
+                        .with(
+                                ignored -> Log.infof("IGNORED: message sent successfully to client for gameId=%s", newGameId),
+                                failure -> Log.errorf("FAILURE: Failed to send message to client for gameId=%s: %s", newGameId,
+                                        failure.getMessage())
+                        );
+            } catch (Exception e)
+            {
+                Log.error("Error sending message to client", e);
+            }
+        }
+    }
+
 }

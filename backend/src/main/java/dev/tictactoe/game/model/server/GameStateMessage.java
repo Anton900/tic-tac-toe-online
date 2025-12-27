@@ -1,4 +1,4 @@
-package dev.tictactoe.game.model;
+package dev.tictactoe.game.model.server;
 
 import dev.tictactoe.game.dto.GameStateDTO;
 

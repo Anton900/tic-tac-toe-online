@@ -1,18 +1,14 @@
 package dev.tictactoe.game;
 
-import dev.tictactoe.exception.ApiError;
 import dev.tictactoe.exception.GameException;
-import dev.tictactoe.exception.GameNotFoundException;
-import dev.tictactoe.game.dto.GameStateDTO;
-import dev.tictactoe.game.model.*;
+import dev.tictactoe.game.model.client.ClientMessage;
+import dev.tictactoe.game.model.server.ErrorMessage;
 import dev.tictactoe.game.registry.GameRegistry;
 import dev.tictactoe.game.service.GameManagementService;
 import io.quarkus.logging.Log;
 import io.quarkus.websockets.next.*;
 import io.vertx.core.json.Json;
 import jakarta.inject.Inject;
-
-import java.util.Set;
 
 @WebSocket(path = "/game/{gameId}")
 public class GameWebSocket
@@ -81,16 +77,6 @@ public class GameWebSocket
                     gameException.getCode(),
                     gameException.getMessage()
             );
-        }
-        catch (Exception e)
-        {
-            Log.errorf("Unexpected exception occurred: %s", e.getMessage());
-            sendError(
-                    connection,
-                    "INTERNAL_SERVER_ERROR",
-                    e.getMessage()
-            );
-
         }
     }
 

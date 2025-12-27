@@ -1,6 +1,4 @@
-package dev.tictactoe.game.model;
-
-import dev.tictactoe.game.dto.GameStateDTO;
+package dev.tictactoe.game.model.server;
 
 public record ErrorMessage(
         String type,

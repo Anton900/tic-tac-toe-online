@@ -6,6 +6,6 @@ public enum ActionType
     RESIGN,
     CREATE_GAME,
     JOIN_GAME,
-    REMATCH,
+    CREATE_REMATCH,
     RECONNECT
 }
