@@ -23,7 +23,6 @@
       <button
         class="btn btn-primary"
         @click="createRematch"
-        :disabled="status === 'IN_PROGRESS'"
       >
         Rematch
       </button>
@@ -32,7 +31,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import GameBoard from '../components/GameBoard.vue'
 
@@ -40,8 +39,10 @@ const route = useRoute()
 const router = useRouter()
 
 const gameId = ref(route.params.gameId)
-const InitActionType = sessionStorage.getItem('initActionType') ?? 'RECONNECT'
+let InitActionType = sessionStorage.getItem('initActionType') ?? 'RECONNECT'
+const BACKEND_URL = 'http://localhost:8080'
 let socket = null
+let oldGameId = null
 
 const board = ref([])
 const currentTurn = ref(null)
@@ -51,18 +52,22 @@ const playerO = ref('')
 
 function setupSocketHandlers(ws, id) {
   ws.onopen = () => {
-    console.log('WebSocket connected to', id)
+    console.log('ONOPEN WebSocket connected to', ws.url)
 
-    console.log("InitActionType:", InitActionType)
-    ws.send(JSON.stringify({
-        actionType: InitActionType,
-        gameId: id
-    }))
+    if(InitActionType)
+    {
+      console.log("InitActionType:", InitActionType)
+      ws.send(JSON.stringify({
+          actionType: InitActionType,
+          gameId: id,
+          previousGameId: InitActionType === 'CREATE_REMATCH' ? oldGameId : null
+      }))
 
-    sessionStorage.setItem('initActionType', 'RECONNECT')
-
+      sessionStorage.setItem('initActionType', 'RECONNECT')
+    }
   }
   ws.onmessage = (event) => {
+    console.log('ONMESSAGE WebSocket message received,', ws.url)
     console.log('Received:', event.data)
     const message = JSON.parse(event.data)
 
@@ -71,6 +76,10 @@ function setupSocketHandlers(ws, id) {
     switch (message.type) {
       case 'GAME_STATE':
         updateGameState(message.gameState)
+        break
+      case 'REMATCH_CREATED':
+        console.log("Rematch created with rematchGameId:", message.rematchGameId)
+        router.push(`/game/${message.rematchGameId}`)
         break
       case 'ERROR':
         console.log("Message from backend errorCode:", message.errorCode)
@@ -87,10 +96,10 @@ function setupSocketHandlers(ws, id) {
     status.value = gameState.status
   }
   ws.onclose = () => {
-    console.log('WebSocket closed')
+    console.log('ONCLOSE WebSocket closed:', ws.url)
   }
   ws.onerror = (e) => {
-    console.error('WebSocket error', e)
+    console.error('ONERROR WebSocket error', e)
   }
 }
 
@@ -103,6 +112,7 @@ function updateGameState(newState) {
 }
 
 function connectSocket(id) {
+  console.log("Attempting to connect new socket with gameId:", id)
   if (!id) return
   if (socket) {
     try { socket.close() } catch(e) {}
@@ -120,18 +130,29 @@ function connectSocket(id) {
 
 async function createRematch() {
   try {
-    const res = await fetch('http://localhost:8080/game/createGameId', { method: 'GET' })
+    const res = await fetch(`${BACKEND_URL}/game/createGameId`, { method: 'GET' })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const id = await res.text()
-    
-    // Clean up current socket
+
+    oldGameId = gameId.value
+
+    // Clean up current socket and wait for it to close
     if (socket) {
-      socket.close()
+      await new Promise((resolve) => {
+        if (socket.readyState === WebSocket.CLOSED) {
+          resolve()
+        } else {
+          socket.onclose = () => resolve()
+          socket.close()
+        }
+      })
       socket = null
     }
-    
-    // Navigate to new game with CREATE_GAME action
-    router.push({ path: `/game/${id}`, state: { actionType: 'CREATE_GAME' } })
+
+    console.log("setting CREATE_REMATCH with oldGameId:", oldGameId)
+    // Navigate to new game with CREATE_REMATCH action
+    sessionStorage.setItem('initActionType', 'CREATE_REMATCH')
+    router.push(`/game/${id}`)
   } catch (e) {
     console.error('Failed to create rematch', e)
     alert('Failed to create rematch: ' + e.message)
@@ -166,6 +187,16 @@ onUnmounted(() => {
   if (socket) {
     socket.close()
     socket = null
+  }
+})
+
+// Watch for route param changes (e.g., rematch navigation)
+watch(() => route.params.gameId, (newGameId) => {
+  if (newGameId && newGameId !== gameId.value) {
+    console.log('Game ID changed from', gameId.value, 'to', newGameId)
+    gameId.value = newGameId
+    InitActionType = sessionStorage.getItem('initActionType') ?? 'RECONNECT'
+    connectSocket(newGameId)
   }
 })
 </script>
