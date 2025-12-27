@@ -32,17 +32,33 @@ public class GameManagementService
 
         if (clientMessage.actionType == ActionType.CREATE_GAME)
         {
-            Log.infof("Creating new game for gameId=%s", gameId);
+            Log.infof("Creating new game with gameId=%s", gameId);
             createGame(gameId, connection);
-            addParticipant(gameId, connection);
+            sendGameState(gameId);
+        }
+        if (clientMessage.actionType == ActionType.JOIN_GAME)
+        {
+            joinGame(gameId, connection);
             sendGameState(gameId);
         }
         if (clientMessage.actionType == ActionType.MAKE_MOVE)
         {
-            Log.infof("Making move for gameId=%s at position=%d", gameId, clientMessage.position);
+            Log.infof("Making move with gameId=%s at position=%d", gameId, clientMessage.position);
             makeMove(gameId, clientMessage.position, connection);
             sendGameState(gameId);
         }
+    }
+
+    public void joinGame(String gameId, WebSocketConnection connection)
+    {
+        Log.infof("Joining game with gameId=%s", gameId);
+        TicTacToeGame game = getGame(gameId);
+        if(game == null)
+        {
+            Log.warnf("No active game to join for gameId=%s", gameId);
+            throw new GameNotFoundException(gameId);
+        }
+        addParticipant(gameId, connection);
     }
 
     public boolean joinedCurrentGame(String gameId, WebSocketConnection connection)
