@@ -19,7 +19,7 @@ The goal of this project was to understand and learn how to work with websockets
 ## Tech Stack
 
 **Backend:** Java, Quarkus, WebSockets  
-**Frontend:** Vue 3, Vite, Tailwind CSS
+**Frontend:** Vue 3, Vite, Tailwind CSS (using DaisyUI)
 
 ## Planned
 
