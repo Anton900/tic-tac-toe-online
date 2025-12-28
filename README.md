@@ -1,6 +1,7 @@
 # tic-tac-toe-online
 
 A real-time online Tic-Tac-Toe game built with WebSockets.
+The goal of this project was to understand and learn how to work with websockets and implement real-time communication between clients and servers.
 
 ## Implemented
 
