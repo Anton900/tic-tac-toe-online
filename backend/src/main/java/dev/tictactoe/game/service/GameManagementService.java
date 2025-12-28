@@ -173,12 +173,13 @@ public class GameManagementService
         GameSession oldGameSession = gameSessions.get(previousGameId);
         GameSession newGameSession = new GameSession();
 
-        if(newGameSession.markRematchCreated())
+        if(oldGameSession.markRematchCreated())
         {
             newGameSession.setGameId(newGameId);
             newGameSession.assignPlayerX(oldGameSession.getPlayerO());
             newGameSession.assignPlayerO(oldGameSession.getPlayerX());
             newGameSession.setSpectators(oldGameSession.getSpectators());
+            newGameSession.updateStatus();
             gameSessions.put(newGameId, newGameSession);
         }
     }

@@ -67,7 +67,7 @@ public class GameSession
         spectators.add(user);
     }
 
-    private void updateStatus()
+    public void updateStatus()
     {
         if (playerX != null && playerO != null)
         {

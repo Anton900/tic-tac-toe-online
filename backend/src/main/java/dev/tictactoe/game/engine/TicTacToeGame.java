@@ -27,7 +27,7 @@ public class TicTacToeGame
     {
         this.board = new Mark[BOARD_SIZE];
         this.currentTurn = Mark.X;
-        this.status = GameStatus.IN_PROGRESS;
+        this.status = GameStatus.WAITING_FOR_PLAYERS;
     }
 
     public void makeMove(int position, Mark role)
