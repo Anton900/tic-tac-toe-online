@@ -31,7 +31,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import GameBoard from '../components/GameBoard.vue'
 
@@ -51,6 +51,10 @@ const currentTurn = ref(null)
 const status = ref(null)
 const playerX = ref('')
 const playerO = ref('')
+
+const playerCurrentTurn = computed(() => {
+  return currentTurn.value === 'X' ? playerX.value : playerO.value
+})
 
 function setupSocketHandlers(ws, id) {
   ws.onopen = () => {
@@ -108,9 +112,6 @@ function setupSocketHandlers(ws, id) {
         console.warn('Unknown type from server:', message.type)
     }
     console.log("ON MESSAGE: RECONNECTTOKEN:", reconnectToken)
-    board.value = gameState.board
-    currentTurn.value = gameState.currentTurn
-    status.value = gameState.status
   }
   ws.onclose = () => {
     console.log('ONCLOSE WebSocket closed:', ws.url)
@@ -124,8 +125,8 @@ function updateGameState(newState) {
   board.value = newState.board
   currentTurn.value = newState.currentTurn
   status.value = newState.status
-  playerX.value = newState.playerX || ''
-  playerO.value = newState.playerO || ''
+  playerX.value = newState.playerX || 'Guest'
+  playerO.value = newState.playerO || 'Guest'
 }
 
 function connectSocket(id) {
