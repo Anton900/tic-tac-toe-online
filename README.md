@@ -25,33 +25,56 @@ The goal of this project was to understand and learn how to work with websockets
 
 - In-game chat
 
-## Start the Backend (Quarkus)
+## Start Application Locally
+
+### Start the Backend (Quarkus)
 
 From the project root (or backend directory):
+
+```bash
 mvn quarkus:dev
+```
 
 This will:
-Start the backend in development mode
-Enable hot reload
+- Start the backend in development mode
+- Enable hot reload
 
-Run on:
+Runs on:
+
+```
 http://localhost:8080
+```
 
-## Start the Frontend
+---
+
+### Start the Frontend
 
 Navigate to the frontend directory:
-- cd frontend
+
+```bash
+cd frontend
+```
 
 Install dependencies (first time only):
-- npm install
+
+```bash
+npm install
+```
 
 Start the development server:
-- npm run dev
+
+```bash
+npm run dev
+```
 
 The frontend will usually be available at:
-- http://localhost:5173
+
+```
+http://localhost:5173
+```
 
 (Check terminal output for the exact URL.)
+
 
 ## Images
 
