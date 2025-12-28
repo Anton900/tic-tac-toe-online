@@ -7,6 +7,7 @@ import dev.tictactoe.game.model.Mark;
 import io.quarkus.logging.Log;
 import jakarta.ws.rs.core.Response;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.util.Arrays;
 import java.util.Objects;
@@ -19,6 +20,7 @@ public class TicTacToeGame
     @Getter
     private Mark currentTurn;
     @Getter
+    @Setter
     private GameStatus status;
 
     public TicTacToeGame()

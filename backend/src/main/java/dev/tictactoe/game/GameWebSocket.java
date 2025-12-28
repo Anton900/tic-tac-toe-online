@@ -3,7 +3,7 @@ package dev.tictactoe.game;
 import dev.tictactoe.exception.GameException;
 import dev.tictactoe.game.model.client.ClientMessage;
 import dev.tictactoe.game.model.server.ErrorMessage;
-import dev.tictactoe.game.registry.GameRegistry;
+import dev.tictactoe.game.registry.UserRegistry;
 import dev.tictactoe.game.service.GameManagementService;
 import io.quarkus.logging.Log;
 import io.quarkus.websockets.next.*;
@@ -17,7 +17,7 @@ public class GameWebSocket
     GameManagementService gameManagementService;
 
     @Inject
-    GameRegistry gameRegistry;
+    UserRegistry userRegistry;
 
     @OnOpen
     void onOpen(WebSocketConnection connection)
@@ -47,9 +47,7 @@ public class GameWebSocket
     void onClose(WebSocketConnection connection)
     {
         Log.info("================================= ON CLOSE ===========================================");
-
-        gameManagementService.removeParticipant(connection);
-        connection.close();
+        gameManagementService.removeUser(connection);
         Log.info("Connection closed and removed from registry");
     }
 

@@ -7,5 +7,7 @@ public enum ActionType
     CREATE_GAME,
     JOIN_GAME,
     CREATE_REMATCH,
-    RECONNECT
+    RECONNECT,
+    CONNECT,
+    CHECK_GAME_EXISTS
 }

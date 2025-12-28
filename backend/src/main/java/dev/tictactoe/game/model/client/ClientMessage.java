@@ -10,4 +10,6 @@ public class ClientMessage
     public String gameId;
     public String previousGameId;
     public Integer position;
+    public String displayName;
+    public String reconnectToken;
 }

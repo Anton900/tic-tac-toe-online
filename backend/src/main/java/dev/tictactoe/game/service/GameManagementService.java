@@ -6,11 +6,15 @@ import dev.tictactoe.game.model.*;
 import dev.tictactoe.game.engine.TicTacToeGame;
 import dev.tictactoe.game.dto.GameStateDTO;
 import dev.tictactoe.game.model.client.ClientMessage;
+import dev.tictactoe.game.model.server.ConnectedMessage;
+import dev.tictactoe.game.model.server.GameExistMessage;
 import dev.tictactoe.game.model.server.GameStateMessage;
 import dev.tictactoe.game.model.server.RematchCreatedMessage;
+import dev.tictactoe.game.registry.UserRegistry;
 import io.quarkus.logging.Log;
 import io.quarkus.websockets.next.WebSocketConnection;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 
 import java.util.Map;
@@ -22,62 +26,130 @@ public class GameManagementService
 {
     private final Map<String, GameSession> gameSessions = new ConcurrentHashMap<>();
 
+    @Inject
+    UserRegistry userRegistry;
+
     public void handleMessage(ClientMessage clientMessage, WebSocketConnection connection)
     {
-        String gameId = clientMessage.getGameId();
-        if (gameId == null || gameId.isBlank())
+
+        if (clientMessage.actionType == ActionType.CONNECT)
         {
-            Log.warn("Received message with missing or empty gameId");
+            String displayName = clientMessage.getDisplayName();
+            String reconnectToken = clientMessage.getReconnectToken();
+            Log.infof("Connecting user with displayName=%s", displayName);
+            User user = userRegistry.connectUser(connection, reconnectToken, displayName);
+            connection.sendText(new ConnectedMessage(
+                    user.displayName(),
+                    user.reconnectToken()))
+                    .subscribe()
+                    .with(
+                            ignored -> Log.infof("IGNORED: Game state sent successfully to client for userId=%s", user.id()),
+                            failure -> Log.errorf("FAILURE: Failed to send game state to client for userId=%s: %s", user.id(),
+                                    failure.getMessage())
+                    );
             return;
         }
+
+        String gameId = clientMessage.getGameId();
+        validGameId(gameId);
 
         if (clientMessage.actionType == ActionType.CREATE_GAME)
         {
             Log.infof("Creating new game with gameId=%s", gameId);
-            createGame(gameId, connection);
+            User user = userRegistry.getUserByConnection(connection.id());
+            createGame(gameId, connection, user);
             sendGameState(gameId);
         }
         if (clientMessage.actionType == ActionType.JOIN_GAME)
         {
-            joinGame(gameId, connection);
+            User user = userRegistry.getUserByConnection(connection.id());
+            joinGame(gameId, user);
             sendGameState(gameId);
         }
         if (clientMessage.actionType == ActionType.CREATE_REMATCH)
         {
             String previousGameId = clientMessage.getPreviousGameId();
+            validGameId(previousGameId);
             Log.infof("Creating rematch game with gameId=%s and rematchGameId=%s", previousGameId, gameId);
-            createRematch(gameId, connection);
+            User user = userRegistry.getUserByConnection(connection.id());
+            createRematch(previousGameId, gameId, user);
             sendGameState(gameId); // Send game state for player that clicked on rematch
             sendRematch(previousGameId, gameId); // Send rematch notification to other player and spectators
         }
         if (clientMessage.actionType == ActionType.MAKE_MOVE)
         {
             Log.infof("Making move with gameId=%s at position=%d", gameId, clientMessage.position);
-            makeMove(gameId, clientMessage.position, connection);
+            User user = userRegistry.getUserByConnection(connection.id());
+            makeMove(gameId, clientMessage.position, user);
             sendGameState(gameId);
+        }
+        if (clientMessage.actionType == ActionType.CHECK_GAME_EXISTS)
+        {
+            Log.infof("Checking if game exists with gameId=%s", gameId);
+            boolean doesGameExist = doesGameExist(gameId);
+            if (doesGameExist)
+            {
+                Log.infof("Game exists with gameId=%s", gameId);
+                connection.sendText(new GameExistMessage())
+                        .subscribe()
+                        .with(
+                                ignored -> Log.infof("IGNORED: Game state sent successfully to client for gameId=%s", gameId),
+                                failure -> Log.errorf("FAILURE: Failed to send game state to client for gameId=%s: %s", gameId,
+                                        failure.getMessage())
+                        );
+
+            }
         }
     }
 
-    public void joinGame(String gameId, WebSocketConnection connection)
+    public void validGameId(String gameId)
+    {
+        if (gameId == null || gameId.isBlank())
+        {
+            throw new GameException(Response.Status.BAD_REQUEST, "INVALID_GAME_ID", "Game ID is missing or empty");
+        }
+    }
+
+    public void joinGame(String gameId, User user)
     {
         Log.infof("Joining game with gameId=%s", gameId);
-        TicTacToeGame game = getGame(gameId);
+        GameSession gameSession = gameSessions.get(gameId);
+        TicTacToeGame game = gameSession.getTicTacToeGame();
+
         if(game == null)
         {
             Log.warnf("No active game to join for gameId=%s", gameId);
             throw new GameNotFoundException(gameId);
         }
-        addParticipant(gameId, connection);
+
+        boolean alreadyInGameAsPlayer = gameSession.isUserAPlayer(user);
+
+        if(alreadyInGameAsPlayer)
+        {
+            Log.infof("User already assigned as player in gameId=%s", gameId);
+            return;
+        }
+        if(gameSession.playersAssigned())
+        {
+            Log.infof("Both players already assigned for gameId=%s, adding as spectator", gameId);
+            gameSession.addSpectator(user);
+        }
+        else
+        {
+            Log.infof("Assigning player to gameId=%s", gameId);
+            gameSession.assignPlayer(user);
+        }
+
     }
 
     public boolean joinedCurrentGame(String gameId, WebSocketConnection connection)
     {
         // Check that a game exists for the given gameId
-        TicTacToeGame game = getGame(gameId);
+        TicTacToeGame game = getGameFromGameSessions(gameId);
         if (game != null)
         {
             Log.info(("Reusing existing game for gameId=%s").formatted(gameId));
-            addParticipant(gameId, connection);
+
             return true;
         }
         else
@@ -88,81 +160,75 @@ public class GameManagementService
         }
     }
 
-    public void createGame(String gameId, WebSocketConnection connection)
+    public void createGame(String gameId, WebSocketConnection connection, User user)
     {
-        gameSessions.put(gameId, new GameSession());
-        addParticipant(gameId, connection);
+        GameSession newGameSession = new GameSession();
+        newGameSession.setGameId(gameId);
+        newGameSession.assignPlayer(user);
+        gameSessions.put(gameId, newGameSession);
     }
 
-    public void createRematch(String newGameId, WebSocketConnection connection)
+    public void createRematch(String previousGameId, String newGameId, User user)
     {
-        GameSession gameSesson = new GameSession();
-        gameSesson.markRematchCreated();
-        gameSessions.put(newGameId, gameSesson);
-        addParticipant(newGameId, connection);
-    }
+        GameSession oldGameSession = gameSessions.get(previousGameId);
+        Mark nextMark = getNextMark(previousGameId, user, oldGameSession);
 
-    public void addParticipant(String gameId, WebSocketConnection connection)
-    {
-        Set<GameParticipant> participants = gameSessions.get(gameId).getGameParticipants();
-
-        synchronized (participants)
+        GameSession newGameSession = new GameSession();
+        if(newGameSession.markRematchCreated())
         {
-            // avoid registering the same connection multiple times
-            boolean alreadyRegistered = participants.stream()
-                    .anyMatch(p -> p.getConnection().equals(connection));
-            if (alreadyRegistered)
-            {
-                Log.info("Connection already registered for gameId=" + gameId);
-                return;
-            }
-
-            boolean playerXTaken = participants.stream()
-                    .anyMatch(p -> p.getRole() == GameRole.PLAYER_X);
-            boolean playerOTaken = participants.stream()
-                    .anyMatch(p -> p.getRole() == GameRole.PLAYER_O);
-
-            GameRole assignedRole;
-            if (!playerXTaken)
-            {
-                assignedRole = GameRole.PLAYER_X;
-            }
-            else if (!playerOTaken)
-            {
-                assignedRole = GameRole.PLAYER_O;
-            }
-            else
-            {
-                assignedRole = GameRole.SPECTATOR;
-            }
-
-            participants.add(GameParticipant.builder()
-                    .connection(connection)
-                    .role(assignedRole)
-                    .build());
-
-            Log.info("Assigned " + assignedRole + " to connection for gameId=" + gameId + ". Participants: " + participants);
+            newGameSession.setGameId(newGameId);
+            newGameSession.assignPlayerByMark(nextMark, user);
+            gameSessions.put(newGameId, newGameSession);
         }
     }
 
-    public void makeMove(String gameId, int position, WebSocketConnection connection)
+    private static Mark getNextMark(String previousGameId, User user, GameSession oldGameSession)
     {
-        TicTacToeGame game = getGame(gameId);
-        Set<GameParticipant> participants = gameSessions.get(gameId).getGameParticipants();
-        if(participants == null)
+        User playerX = oldGameSession.getPlayerX();
+        User playerO = oldGameSession.getPlayerO();
+
+        boolean wasPlayerX = user != null && playerX != null && user.id().equals(playerX.id());
+        boolean wasPlayerO = user != null && playerO != null && user.id().equals(playerO.id());
+        if(!wasPlayerX && !wasPlayerO)
         {
-            throw new GameException(Response.Status.NOT_FOUND, "NO_PARTICAPNTS_FOUND", "No participants found for gameId: " + gameId);
+            throw new GameException(Response.Status.FORBIDDEN, "NOT_A_PLAYER", "User wasn't a player in previous gameId: " + previousGameId);
         }
 
-        GameParticipant participant = participants.stream()
-                .filter(p -> p.getConnection().equals(connection))
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("Participant not found for the given connection"));
-
-        game.makeMove(position, participant.getRole().toMark());
+        Mark nextMark = null;
+        if(wasPlayerX)
+        {
+            nextMark = Mark.O;
+        }
+        else
+        {
+           nextMark = Mark.X;
+        }
+        return nextMark;
     }
 
-    public TicTacToeGame getGame(String gameId)
+    public void makeMove(String gameId, int position, User user)
+    {
+        GameSession gameSession = gameSessions.get(gameId);
+        TicTacToeGame game = gameSession.getTicTacToeGame();
+        if(!gameSession.playersAssigned())
+        {
+            throw new GameException(Response.Status.NOT_FOUND, "NOT_ALL_PLATYERS_OFUND", "Game is missing players");
+        }
+
+        Mark currentPlayersMark = gameSession.getPlayerMark(user);
+        game.makeMove(position, currentPlayersMark);
+    }
+
+    public GameSession getGameSession(String gameId)
+    {
+        if(!gameSessions.containsKey(gameId))
+        {
+            return null;
+        }
+        return gameSessions.get(gameId);
+    }
+
+    public TicTacToeGame getGameFromGameSessions(String gameId)
     {
         if(!gameSessions.containsKey(gameId))
         {
@@ -173,7 +239,7 @@ public class GameManagementService
 
     public GameStateDTO getGameState(String gameId)
     {
-        TicTacToeGame game = getGame(gameId);
+        TicTacToeGame game = getGameFromGameSessions(gameId);
         if (game == null)
         {
             throw new GameException(Response.Status.NOT_FOUND, "GAME_NOT_FOUND", "Game doesn't exist for gameId: " + gameId);
@@ -185,52 +251,39 @@ public class GameManagementService
                 .build();
     }
 
-    public void removeParticipant(WebSocketConnection connection)
+    public void removeUser(WebSocketConnection connection)
     {
-        for (Map.Entry<String, GameSession> entry : gameSessions.entrySet())
-        {
-            String gameId = entry.getKey();
-            GameSession session = entry.getValue();
-            Set<GameParticipant> participants = session.getGameParticipants();
-
-            synchronized (participants)
-            {
-                boolean removed = participants.removeIf(p -> p.getConnection().equals(connection));
-                if (removed)
-                {
-                    Log.info("Removed participant from gameId=" + gameId);
-                }
-            }
-        }
+        userRegistry.removeConnection(connection);
     }
 
-    public Set<GameParticipant> getGameParticpants(String gameId)
+    public boolean doesGameExist(String gameId)
     {
-        GameSession session = gameSessions.get(gameId);
-        if (session == null)
-        {
-            throw new GameException(Response.Status.NOT_FOUND, "GAME_NOT_FOUND", "Game doesn't exist for gameId: " + gameId);
-        }
-        return session.getGameParticipants();
+        return gameSessions.containsKey(gameId);
     }
 
     public void sendGameState(String gameId)
     {
         GameStateDTO gameState = getGameState(gameId);
-        Set<GameParticipant> gameParticipants = getGameParticpants(gameId);
-        for (GameParticipant gameParticipant : gameParticipants)
+        GameSession gameSession = getGameSession(gameId);
+        Set<User> gameSessionUsers = gameSession.getAllUsers();
+        for (User user : gameSessionUsers)
         {
             try
             {
                 GameStateMessage gameStateMessage = new GameStateMessage(gameState);
                 Log.infof("Sending updated game state to client for gameId=%s", gameId);
-                gameParticipant.getConnection().sendText(gameStateMessage)
-                        .subscribe()
-                        .with(
-                                ignored -> Log.infof("IGNORED: Game state sent successfully to client for gameId=%s", gameId),
-                                failure -> Log.errorf("FAILURE: Failed to send game state to client for gameId=%s: %s", gameId,
-                                        failure.getMessage())
-                        );
+                Set<WebSocketConnection> connections = userRegistry.getUserConnections(user.id());
+                for (WebSocketConnection connection : connections)
+                {
+                    Log.infof("Sending game state to userId=%s on connectionId=%s for gameId=%s", user.id(), connection.id(), gameId);
+                    connection.sendText(gameStateMessage)
+                            .subscribe()
+                            .with(
+                                    ignored -> Log.infof("IGNORED: Game state sent successfully to client for gameId=%s", gameId),
+                                    failure -> Log.errorf("FAILURE: Failed to send game state to client for gameId=%s: %s", gameId,
+                                            failure.getMessage())
+                            );
+                }
             } catch (Exception e)
             {
                 Log.error("Error sending game state to client", e);
@@ -240,23 +293,30 @@ public class GameManagementService
 
     public void sendRematch(String oldGameId, String newGameId)
     {
-        Set<GameParticipant> gameParticipants = getGameParticpants(oldGameId);
-        for (GameParticipant gameParticipant : gameParticipants)
+        GameSession gameSession = getGameSession(oldGameId);
+        Set<User> gameSessionUsers = gameSession.getAllUsers();
+
+        for (User user : gameSessionUsers)
         {
             try
             {
                 RematchCreatedMessage rematchCreatedMessage = new RematchCreatedMessage(newGameId);
                 Log.infof("Sending rematch created message to client for oldGameId=%s and newGameId=%s", oldGameId, newGameId);
-                gameParticipant.getConnection().sendText(rematchCreatedMessage)
-                        .subscribe()
-                        .with(
-                                ignored -> Log.infof("IGNORED: message sent successfully to client for gameId=%s", newGameId),
-                                failure -> Log.errorf("FAILURE: Failed to send message to client for gameId=%s: %s", newGameId,
-                                        failure.getMessage())
-                        );
+                Set<WebSocketConnection> connections = userRegistry.getUserConnections(user.id());
+                for (WebSocketConnection connection : connections)
+                {
+                    Log.infof("Sending game state to userId=%s on connectionId=%s for gameId=%s", user.id(), connection.id(), newGameId);
+                    connection.sendText(rematchCreatedMessage)
+                            .subscribe()
+                            .with(
+                                    ignored -> Log.infof("IGNORED: message sent successfully to client for gameId=%s", newGameId),
+                                    failure -> Log.errorf("FAILURE: Failed to send message to client for gameId=%s: %s", newGameId,
+                                            failure.getMessage())
+                            );
+                }
             } catch (Exception e)
             {
-                Log.error("Error sending message to client", e);
+                Log.error("Error sending game state to client", e);
             }
         }
     }
