@@ -12,7 +12,6 @@ The goal of this project was to understand and learn how to work with websockets
   - Second player: **O**
   - Additional connections: **spectators**
 - Turn validation enforced on the server
-- Vue + Tailwind CSS frontend with live updates
 - Rematch support
 - Reconnect handling
 - Player display names
