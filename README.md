@@ -12,6 +12,9 @@ A real-time online Tic-Tac-Toe game built with WebSockets.
   - Additional connections: **spectators**
 - Turn validation enforced on the server
 - Vue + Tailwind CSS frontend with live updates
+- Rematch support
+- Reconnect handling
+- Player display names
 
 ## Tech Stack
 
@@ -21,7 +24,3 @@ A real-time online Tic-Tac-Toe game built with WebSockets.
 ## Planned
 
 - In-game chat
-- Rematch support
-- Reconnect handling
-- Optional player display names
-- Improved lobby / join flow
