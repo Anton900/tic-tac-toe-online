@@ -52,15 +52,9 @@ const status = ref(null)
 const playerX = ref('')
 const playerO = ref('')
 
-const playerCurrentTurn = computed(() => {
-  return currentTurn.value === 'X' ? playerX.value : playerO.value
-})
-
 function setupSocketHandlers(ws, id) {
   ws.onopen = () => {
     console.log('ONOPEN WebSocket connected to', ws.url)
-
-     console.log("BERFORE SENDING CONNECT: RECONNECTTOKEN:", reconnectToken)
 
      ws.send(JSON.stringify({
         actionType: 'CONNECT',
@@ -83,15 +77,11 @@ function setupSocketHandlers(ws, id) {
   }
   ws.onmessage = (event) => {
     console.log('ONMESSAGE WebSocket message received,', ws.url)
-    console.log('Received:', event.data)
+
     const message = JSON.parse(event.data)
 
-    console.log("Message from backend:", message)
-    console.log("Message from backend type:", message.type)
-    console.log("ON MESSAGE: RECONNECTTOKEN:", reconnectToken)
     switch (message.type) {
       case 'CONNECTED':
-        console.log("Connected to game with reconnectToken:", message.reconnectToken)
         reconnectToken = message.reconnectToken
         sessionStorage.setItem('reconnectToken', reconnectToken)
         break
@@ -99,19 +89,15 @@ function setupSocketHandlers(ws, id) {
         updateGameState(message.gameState)
         break
       case 'REMATCH_CREATED':
-        console.log("Rematch created with rematchGameId:", message.rematchGameId)
         router.push(`/game/${message.rematchGameId}`)
         break
       case 'ERROR':
-        console.log("Message from backend errorCode:", message.errorCode)
-        console.log("Message from backend errorMessage:", message.errorMessage)
         alert('Error from server: ' + message.errorMessage)
         goBack()
         break
       default:
         console.warn('Unknown type from server:', message.type)
     }
-    console.log("ON MESSAGE: RECONNECTTOKEN:", reconnectToken)
   }
   ws.onclose = () => {
     console.log('ONCLOSE WebSocket closed:', ws.url)
@@ -125,8 +111,8 @@ function updateGameState(newState) {
   board.value = newState.board
   currentTurn.value = newState.currentTurn
   status.value = newState.status
-  playerX.value = newState.playerX || 'Guest'
-  playerO.value = newState.playerO || 'Guest'
+  playerX.value = newState.playerX
+  playerO.value = newState.playerO
 }
 
 function connectSocket(id) {
@@ -167,7 +153,6 @@ async function createRematch() {
       socket = null
     }
 
-    console.log("setting CREATE_REMATCH with oldGameId:", oldGameId)
     // Navigate to new game with CREATE_REMATCH action
     sessionStorage.setItem('initActionType', 'CREATE_REMATCH')
     router.push(`/game/${id}`)

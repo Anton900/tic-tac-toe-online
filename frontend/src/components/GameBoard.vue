@@ -7,11 +7,11 @@
         <div class="flex justify-center gap-8 my-4">
           <div class="px-4 py-2 rounded-lg" :class="currentTurn === 'X' ? 'bg-yellow-600' : 'bg-gray-700'">
             <p class="text-sm text-gray-300">Mark X</p>
-            <p class="font-bold text-lg">{{ playerX || 'Guest' }}</p>
+            <p class="font-bold text-lg">{{ playerX || 'Waiting...' }}</p>
           </div>
           <div class="px-4 py-2 rounded-lg" :class="currentTurn === 'O' ? 'bg-yellow-600' : 'bg-gray-700'">
             <p class="text-sm text-gray-300">Mark O</p>
-            <p class="font-bold text-lg">{{ playerO || 'Guest' }}</p>
+            <p class="font-bold text-lg">{{ playerO || 'Waiting...' }}</p>
           </div>
         </div>
       </div>
