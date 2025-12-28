@@ -23,6 +23,7 @@
       <button
         class="btn btn-primary"
         @click="createRematch"
+        :disabled="status === 'IN_PROGRESS' || status === 'WAITING_FOR_PLAYERS'"
       >
         Rematch
       </button>
