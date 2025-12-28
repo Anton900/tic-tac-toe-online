@@ -40,9 +40,11 @@ const router = useRouter()
 
 const gameId = ref(route.params.gameId)
 let InitActionType = sessionStorage.getItem('initActionType') ?? 'RECONNECT'
+let playerName = sessionStorage.getItem('playerName')
 const BACKEND_URL = 'http://localhost:8080'
 let socket = null
 let oldGameId = null
+let reconnectToken = sessionStorage.getItem('reconnectToken') ?? ''
 
 const board = ref([])
 const currentTurn = ref(null)
@@ -54,17 +56,26 @@ function setupSocketHandlers(ws, id) {
   ws.onopen = () => {
     console.log('ONOPEN WebSocket connected to', ws.url)
 
+     console.log("BERFORE SENDING CONNECT: RECONNECTTOKEN:", reconnectToken)
+
+     ws.send(JSON.stringify({
+        actionType: 'CONNECT',
+        displayName: playerName,
+        reconnectToken: reconnectToken,
+      }))
+
     if(InitActionType)
     {
       console.log("InitActionType:", InitActionType)
       ws.send(JSON.stringify({
-          actionType: InitActionType,
-          gameId: id,
-          previousGameId: InitActionType === 'CREATE_REMATCH' ? oldGameId : null
+        actionType: InitActionType,
+        gameId: id,
+        previousGameId: InitActionType === 'CREATE_REMATCH' ? oldGameId : null,
+        reconnectToken: reconnectToken
       }))
-
-      sessionStorage.setItem('initActionType', 'RECONNECT')
+    sessionStorage.setItem('initActionType', 'RECONNECT')
     }
+    console.log("ON OPEN: RECONNECTTOKEN:", reconnectToken)
   }
   ws.onmessage = (event) => {
     console.log('ONMESSAGE WebSocket message received,', ws.url)
@@ -73,7 +84,13 @@ function setupSocketHandlers(ws, id) {
 
     console.log("Message from backend:", message)
     console.log("Message from backend type:", message.type)
+    console.log("ON MESSAGE: RECONNECTTOKEN:", reconnectToken)
     switch (message.type) {
+      case 'CONNECTED':
+        console.log("Connected to game with reconnectToken:", message.reconnectToken)
+        reconnectToken = message.reconnectToken
+        sessionStorage.setItem('reconnectToken', reconnectToken)
+        break
       case 'GAME_STATE':
         updateGameState(message.gameState)
         break
@@ -90,7 +107,7 @@ function setupSocketHandlers(ws, id) {
       default:
         console.warn('Unknown type from server:', message.type)
     }
-
+    console.log("ON MESSAGE: RECONNECTTOKEN:", reconnectToken)
     board.value = gameState.board
     currentTurn.value = gameState.currentTurn
     status.value = gameState.status

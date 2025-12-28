@@ -50,7 +50,7 @@ import { useRouter } from 'vue-router'
 
 const router = useRouter()
 const gameIdInput = ref('')
-const playerName = sessionStorage.getItem('playerName') || 'Guest'
+const playerName = sessionStorage.getItem('playerName')
 
 const BACKEND_URL = 'http://localhost:8080'
 const WS_TIMEOUT = 5000
@@ -77,8 +77,11 @@ async function joinGame() {
   }
 
   try {
+    console.log("Validating game exists with ID:", id)
     await validateGameExists(id)
+    console.log("Game exists, proceeding to join")
     sessionStorage.setItem('initActionType', 'JOIN_GAME')
+    console.log("Joining game with ID:", id)
     router.push(`/game/${id}`)
   } catch (e) {
     console.error('Failed to join game:', e)
@@ -102,18 +105,22 @@ function validateGameExists(gameId) {
 
     ws.onopen = () => {
       ws.send(JSON.stringify({
-        actionType: 'JOIN_GAME',
-        gameId
+        actionType: 'CHECK_GAME_EXISTS',
+        gameId: gameId
       }))
     }
 
     ws.onmessage = (event) => {
       const message = JSON.parse(event.data)
+      console.log("Received validateGameExists response:", message)
+
       cleanup()
       
+      console.log("Received validateGameExists response:", message.type)
       if (message.type === 'ERROR') {
         reject(new Error(message.errorMessage || 'Game not found'))
-      } else if (message.type === 'GAME_STATE') {
+      } else if (message.type === 'GAME_EXIST') {
+        console.log("Game exists message received")
         resolve()
       } else {
         reject(new Error('Unexpected response from server'))
