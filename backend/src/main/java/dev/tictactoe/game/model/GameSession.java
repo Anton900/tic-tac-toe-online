@@ -75,6 +75,18 @@ public class GameSession
         }
     }
 
+    public void assignPlayerX(User user)
+    {
+        this.playerX = user;
+        updateStatus();
+    }
+
+    public void assignPlayerO(User user)
+    {
+        this.playerO = user;
+        updateStatus();
+    }
+
     public Mark getPlayerMark(User user)
     {
         if (user.equals(playerX))

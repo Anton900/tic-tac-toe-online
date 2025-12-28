@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.Set;
+
 @Builder
 @Getter
 @AllArgsConstructor
@@ -16,4 +18,7 @@ public class GameStateDTO
     private Mark[] board;
     private Mark currentTurn;
     private GameStatus status;
+    private String playerX;;
+    private String playerO;
+    private Set<String> spectators;
 }

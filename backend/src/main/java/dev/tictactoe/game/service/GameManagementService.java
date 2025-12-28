@@ -171,39 +171,16 @@ public class GameManagementService
     public void createRematch(String previousGameId, String newGameId, User user)
     {
         GameSession oldGameSession = gameSessions.get(previousGameId);
-        Mark nextMark = getNextMark(previousGameId, user, oldGameSession);
-
         GameSession newGameSession = new GameSession();
+
         if(newGameSession.markRematchCreated())
         {
             newGameSession.setGameId(newGameId);
-            newGameSession.assignPlayerByMark(nextMark, user);
+            newGameSession.assignPlayerX(oldGameSession.getPlayerO());
+            newGameSession.assignPlayerO(oldGameSession.getPlayerX());
+            newGameSession.setSpectators(oldGameSession.getSpectators());
             gameSessions.put(newGameId, newGameSession);
         }
-    }
-
-    private static Mark getNextMark(String previousGameId, User user, GameSession oldGameSession)
-    {
-        User playerX = oldGameSession.getPlayerX();
-        User playerO = oldGameSession.getPlayerO();
-
-        boolean wasPlayerX = user != null && playerX != null && user.id().equals(playerX.id());
-        boolean wasPlayerO = user != null && playerO != null && user.id().equals(playerO.id());
-        if(!wasPlayerX && !wasPlayerO)
-        {
-            throw new GameException(Response.Status.FORBIDDEN, "NOT_A_PLAYER", "User wasn't a player in previous gameId: " + previousGameId);
-        }
-
-        Mark nextMark = null;
-        if(wasPlayerX)
-        {
-            nextMark = Mark.O;
-        }
-        else
-        {
-           nextMark = Mark.X;
-        }
-        return nextMark;
     }
 
     public void makeMove(String gameId, int position, User user)
@@ -239,15 +216,26 @@ public class GameManagementService
 
     public GameStateDTO getGameState(String gameId)
     {
-        TicTacToeGame game = getGameFromGameSessions(gameId);
-        if (game == null)
+        GameSession gameSession = getGameSession(gameId);
+
+        if (gameSession == null || gameSession.getTicTacToeGame() == null)
         {
-            throw new GameException(Response.Status.NOT_FOUND, "GAME_NOT_FOUND", "Game doesn't exist for gameId: " + gameId);
+            throw new GameException(Response.Status.NOT_FOUND, "GAME_NOT_FOUND", "Game session doesn't exist for gameId: " + gameId);
         }
+
+        User playerX = gameSession.getPlayerX();
+        User playerO = gameSession.getPlayerO();
+        String playerXName = (playerX != null) ? playerX.displayName() : null;
+        String playerOName = (playerO != null) ? playerO.displayName() : null;
+
+        TicTacToeGame game = gameSession.getTicTacToeGame();
+
         return GameStateDTO.builder()
                 .board(game.getBoard().clone())
                 .status(game.getStatus())
                 .currentTurn(game.getCurrentTurn())
+                .playerX(playerXName)
+                .playerO(playerOName)
                 .build();
     }
 
