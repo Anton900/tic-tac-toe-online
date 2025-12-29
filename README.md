@@ -32,13 +32,12 @@ The goal of this project was to understand and learn how to work with websockets
 From the project root (or backend directory):
 
 ```bash
-mvn quarkus:dev
+./mvnw quarkus:dev
 ```
 
 This will:
 - Start the backend in development mode
-- Enable hot reload
-
+- 
 Runs on:
 
 ```
