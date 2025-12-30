@@ -6,7 +6,7 @@ The goal of this project was to understand and learn how to work with websockets
 ## Implemented
 
 - Real-time multiplayer gameplay
-- Multiple concurrent games (`gameId`)
+- Multiple concurrent games
 - Player roles:
   - First player: **X**
   - Second player: **O**
@@ -37,7 +37,7 @@ From the project root (or backend directory):
 
 This will:
 - Start the backend in development mode
-- 
+
 Runs on:
 
 ```
