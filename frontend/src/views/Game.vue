@@ -32,7 +32,7 @@
       </div>
     </div>
 
-    <div class="card bg-gray-800 w-100 h-[600px] flex flex-col mt-20">
+    <div class="card bg-gray-800 w-80 h-[400px] flex flex-col mt-30">
       <div class="card-body p-4 flex flex-col h-full">
         <h3 class="card-title text-lg mb-3">Chat</h3>
         
