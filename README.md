@@ -19,7 +19,7 @@ The goal of this project was to understand and learn how to work with websockets
 ## Tech Stack
 
 **Backend:** Java, Quarkus, WebSockets  
-**Frontend:** Vue 3, Vite, Tailwind CSS (using DaisyUI)
+**Frontend:** Vue 3, Vite, Tailwind CSS (using daisyUI)
 
 ## Planned
 
@@ -77,14 +77,12 @@ http://localhost:5173
 
 ## Images
 
-<img width="1097" height="805" alt="page1_enterPlayerName" src="https://github.com/user-attachments/assets/f981142f-5e77-4ae8-aab6-501116d9ef5a" />
+<img width="2560" height="1392" alt="1_welcome" src="https://github.com/user-attachments/assets/540a6de1-3b1c-47f4-87ad-609beca11130" />
 
-<img width="1040" height="738" alt="page2_lobby" src="https://github.com/user-attachments/assets/da537199-2144-432a-9067-0a5da7f06ee0" />
+<img width="2560" height="1392" alt="2_createjoin" src="https://github.com/user-attachments/assets/4c8241aa-dd68-49ec-bba7-5570ffe39a9a" />
 
-<img width="815" height="782" alt="page3_new_game_created" src="https://github.com/user-attachments/assets/b8133b66-7082-4887-9c77-3dc986605bb1" />
+<img width="2560" height="1392" alt="3_created_game" src="https://github.com/user-attachments/assets/57ec2ff8-9da5-4742-9881-6cfa62e49ea8" />
 
-<img width="724" height="772" alt="page4_game_in_progress" src="https://github.com/user-attachments/assets/8268de90-8d17-46c4-b08b-876d1a8f9beb" />
+<img width="2560" height="1392" alt="4 2_gameinprogress" src="https://github.com/user-attachments/assets/8efc8092-70c8-40fd-bbab-80af48b17731" />
 
-<img width="709" height="786" alt="page5_game_won" src="https://github.com/user-attachments/assets/db031079-7294-4265-813a-091f0511f8f2" />
-
-
+<img width="2560" height="1392" alt="5_game_won" src="https://github.com/user-attachments/assets/f806c096-aabe-4b80-8f68-608396f0b80f" />
