@@ -12,4 +12,5 @@ public class ClientMessage
     public Integer position;
     public String displayName;
     public String reconnectToken;
+    public String chatMessage;
 }

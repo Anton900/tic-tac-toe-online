@@ -1,9 +1,11 @@
 package dev.tictactoe.game;
 
 import dev.tictactoe.exception.GameException;
+import dev.tictactoe.game.model.ActionType;
 import dev.tictactoe.game.model.client.ClientMessage;
 import dev.tictactoe.game.model.server.ErrorMessage;
 import dev.tictactoe.game.registry.UserRegistry;
+import dev.tictactoe.game.service.GameChatService;
 import dev.tictactoe.game.service.GameManagementService;
 import io.quarkus.logging.Log;
 import io.quarkus.websockets.next.*;
@@ -15,6 +17,9 @@ public class GameWebSocket
 {
     @Inject
     GameManagementService gameManagementService;
+
+    @Inject
+    GameChatService gameChatService;
 
     @Inject
     UserRegistry userRegistry;
@@ -65,7 +70,16 @@ public class GameWebSocket
 
         try
         {
-            gameManagementService.handleMessage(clientMessage, connection);
+            if(clientMessage.actionType == ActionType.SEND_CHAT)
+            {
+                Log.infof("Processing SEND_CHAT action for gameId=%s", clientMessage.gameId);
+                gameChatService.handleMessage(clientMessage, connection);
+            }
+            else
+            {
+                Log.infof("Processing action %s for gameId=%s", clientMessage.actionType, clientMessage.gameId);
+                gameManagementService.handleMessage(clientMessage, connection);
+            }
         }
         catch (GameException gameException)
         {

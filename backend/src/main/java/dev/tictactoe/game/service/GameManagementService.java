@@ -10,6 +10,7 @@ import dev.tictactoe.game.model.server.ConnectedMessage;
 import dev.tictactoe.game.model.server.GameExistMessage;
 import dev.tictactoe.game.model.server.GameStateMessage;
 import dev.tictactoe.game.model.server.RematchCreatedMessage;
+import dev.tictactoe.game.registry.GameSessionRegistry;
 import dev.tictactoe.game.registry.UserRegistry;
 import io.quarkus.logging.Log;
 import io.quarkus.websockets.next.WebSocketConnection;
@@ -24,7 +25,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @ApplicationScoped
 public class GameManagementService
 {
-    private final Map<String, GameSession> gameSessions = new ConcurrentHashMap<>();
+    @Inject
+    GameSessionRegistry gameSessionRegistry;
 
     @Inject
     UserRegistry userRegistry;
@@ -113,7 +115,7 @@ public class GameManagementService
     public void joinGame(String gameId, User user)
     {
         Log.infof("Joining game with gameId=%s", gameId);
-        GameSession gameSession = gameSessions.get(gameId);
+        GameSession gameSession = gameSessionRegistry.getGameSession(gameId);
         TicTacToeGame game = gameSession.getTicTacToeGame();
 
         if(game == null)
@@ -165,12 +167,12 @@ public class GameManagementService
         GameSession newGameSession = new GameSession();
         newGameSession.setGameId(gameId);
         newGameSession.assignPlayer(user);
-        gameSessions.put(gameId, newGameSession);
+        gameSessionRegistry.getGameSessions().put(gameId, newGameSession);
     }
 
     public void createRematch(String previousGameId, String newGameId, User user)
     {
-        GameSession oldGameSession = gameSessions.get(previousGameId);
+        GameSession oldGameSession = gameSessionRegistry.getGameSession(previousGameId);
         GameSession newGameSession = new GameSession();
 
         if(oldGameSession.markRematchCreated())
@@ -180,13 +182,13 @@ public class GameManagementService
             newGameSession.assignPlayerO(oldGameSession.getPlayerX());
             newGameSession.setSpectators(oldGameSession.getSpectators());
             newGameSession.updateStatus();
-            gameSessions.put(newGameId, newGameSession);
+            gameSessionRegistry.addGameSession(newGameId, newGameSession);
         }
     }
 
     public void makeMove(String gameId, int position, User user)
     {
-        GameSession gameSession = gameSessions.get(gameId);
+        GameSession gameSession = gameSessionRegistry.getGameSession(gameId);
         TicTacToeGame game = gameSession.getTicTacToeGame();
         if(!gameSession.playersAssigned())
         {
@@ -199,6 +201,7 @@ public class GameManagementService
 
     public GameSession getGameSession(String gameId)
     {
+        Map<String, GameSession> gameSessions = gameSessionRegistry.getGameSessions();
         if(!gameSessions.containsKey(gameId))
         {
             return null;
@@ -208,6 +211,7 @@ public class GameManagementService
 
     public TicTacToeGame getGameFromGameSessions(String gameId)
     {
+        Map<String, GameSession> gameSessions = gameSessionRegistry.getGameSessions();
         if(!gameSessions.containsKey(gameId))
         {
             return null;
@@ -247,7 +251,7 @@ public class GameManagementService
 
     public boolean doesGameExist(String gameId)
     {
-        return gameSessions.containsKey(gameId);
+        return gameSessionRegistry.getGameSessions().containsKey(gameId);
     }
 
     public void sendGameState(String gameId)

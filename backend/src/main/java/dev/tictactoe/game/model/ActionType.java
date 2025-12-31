@@ -9,5 +9,6 @@ public enum ActionType
     CREATE_REMATCH,
     RECONNECT,
     CONNECT,
-    CHECK_GAME_EXISTS
+    CHECK_GAME_EXISTS,
+    SEND_CHAT
 }
